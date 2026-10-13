@@ -29,7 +29,7 @@ export const monadTestnet = defineChain({
 })
 
 export const MONAD_TESTNET_USDC: `0x${string}` =
-  '0x53444318716870d189333917a22e8D54a8164A3A'
+  '0x534b2f3A21130d7a60830c2Df862319e593943A3'
 
 export type ContractAddresses = {
   usdc: `0x${string}`

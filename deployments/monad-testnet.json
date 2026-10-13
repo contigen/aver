@@ -6,7 +6,7 @@
   "explorer": "https://testnet.monadscan.com",
   "contracts": {
     "USDC": {
-      "address": "0x53444318716870d189333917a22e8D54a8164A3A",
+      "address": "0x534b2f3A21130d7a60830c2Df862319e593943A3",
       "txHash": "existing",
       "deployBlock": 0
     },

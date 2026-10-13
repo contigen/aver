@@ -39,7 +39,7 @@ export const loadConfig = (): AttestorConfig => {
     tokenAddress: (process.env.TOKEN_ADDRESS ||
       process.env.NEXT_PUBLIC_USDC_ADDRESS ||
       process.env.NEXT_PUBLIC_MOCK_USDC_ADDRESS ||
-      '0x53444318716870d189333917a22e8D54a8164A3A') as `0x${string}`,
+      '0x534b2f3A21130d7a60830c2Df862319e593943A3') as `0x${string}`,
     tokenDeployBlock: BigInt(
       process.env.TOKEN_DEPLOY_BLOCK ||
         process.env.NEXT_PUBLIC_TOKEN_DEPLOY_BLOCK ||

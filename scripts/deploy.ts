@@ -134,7 +134,7 @@ const main = async () => {
     transport: http(rpcUrl),
   })
 
-  const officialUsdc = '0x53444318716870d189333917a22e8D54a8164A3A'
+  const officialUsdc = '0x534b2f3A21130d7a60830c2Df862319e593943A3'
   const shouldDeployMock =
     process.argv.includes('--deploy-mock') || process.env.DEPLOY_MOCK === 'true'
   let tokenAddress = (process.env.USDC_ADDRESS ||

@@ -13,7 +13,7 @@ import type { EvidenceBundle, EvidenceTransfer } from '../src/lib/types'
 describe('Evidence Hash & Verification', () => {
   const holder = '0x1111111111111111111111111111111111111111'
   const other = '0x2222222222222222222222222222222222222222'
-  const token = '0x53444318716870D189333917a22e8D54A8164A3A'
+  const token = '0x534b2f3A21130d7a60830c2Df862319e593943A3'
   const salt =
     '0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890' as `0x${string}`
 
