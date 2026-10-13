@@ -1,26 +1,73 @@
-@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Host+Grotesk:wght@300;400;500;600;700;800&display=swap');
+@import 'tailwindcss';
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f8f9fa;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --accent: #0f172a;
+  --accent-foreground: #ffffff;
+  --parchment: #fdfcf9;
+  --parchment-foreground: #0f172a;
+  --parchment-border: #e6e0d4;
+  --parchment-muted: #64748b;
+  --parchment-subtle: rgba(15, 23, 42, 0.03);
+  --status-valid: #059669;
+  --status-breached: #e11d48;
+  --status-stale: #d97706;
+  --status-expired: #64748b;
+  --status-locked: #2563eb;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-parchment: var(--parchment);
+  --color-parchment-foreground: var(--parchment-foreground);
+  --color-parchment-border: var(--parchment-border);
+  --color-parchment-muted: var(--parchment-muted);
+  --font-sans: 'Host Grotesk', system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  letter-spacing: -0.012em;
+  min-height: 100vh;
+}
+
+.ambient-glow {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 600px;
+  height: 400px;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at 80% 20%,
+    rgba(225, 29, 72, 0.04) 0%,
+    rgba(245, 158, 11, 0.02) 40%,
+    transparent 70%
+  );
+  filter: blur(50px);
+  z-index: 0;
+}
+
+.parchment-card {
+  background-color: var(--card);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  box-shadow:
+    0 20px 40px -15px rgba(15, 23, 42, 0.06),
+    0 1px 3px rgba(15, 23, 42, 0.04);
 }
