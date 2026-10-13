@@ -411,10 +411,6 @@ export function HolderDashboard({ contractAddresses }: HolderDashboardProps) {
       const unlockAt = BigInt(Math.floor(Date.now() / 1000) + expiryPreset)
       const wallet = getActiveWalletClient()
 
-      setStatusMessage({
-        type: 'info',
-        text: `Approving LockVault to transfer ${tokenSymbol}...`,
-      })
       const approveTx = await wallet.writeContract({
         address: selectedToken,
         abi: erc20Abi,
@@ -423,10 +419,6 @@ export function HolderDashboard({ contractAddresses }: HolderDashboardProps) {
       })
       await client.waitForTransactionReceipt({ hash: approveTx })
 
-      setStatusMessage({
-        type: 'info',
-        text: `Depositing ${thresholdInput} ${tokenSymbol} into LockVault...`,
-      })
       const depositTx = await wallet.writeContract({
         address: contractAddresses.lockVault,
         abi: lockVaultAbi,
@@ -462,10 +454,7 @@ export function HolderDashboard({ contractAddresses }: HolderDashboardProps) {
     }
     try {
       setIsSubmitting(true)
-      setStatusMessage({
-        type: 'info',
-        text: 'Preparing EIP-712 ProofRequest...',
-      })
+      setStatusMessage(null)
 
       const now = Math.floor(Date.now() / 1000)
       const thresholdBase = parseUnits(thresholdInput, tokenDecimals)
@@ -490,11 +479,6 @@ export function HolderDashboard({ contractAddresses }: HolderDashboardProps) {
           nonce,
           deadline: BigInt(deadline),
         },
-      })
-
-      setStatusMessage({
-        type: 'info',
-        text: 'Submitting request to attestor service...',
       })
 
       const requestBody: IssueProofRequestBody = {
@@ -1387,28 +1371,10 @@ export function HolderDashboard({ contractAddresses }: HolderDashboardProps) {
                 )}
 
                 <div className='pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3'>
-                  {statusMessage ? (
-                    <div
-                      className={`px-3 py-2 rounded-xl text-xs flex items-center gap-2 border font-mono truncate max-w-md ${
-                        statusMessage.type === 'error'
-                          ? 'bg-rose-50 border-rose-200 text-rose-800'
-                          : statusMessage.type === 'success'
-                            ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                            : 'bg-blue-50 border-blue-200 text-blue-800'
-                      }`}
-                    >
-                      {statusMessage.type === 'error' ? (
-                        <AlertCircle className='w-4 h-4 text-rose-600 shrink-0' />
-                      ) : statusMessage.type === 'success' ? (
-                        <CheckCircle2 className='w-4 h-4 text-emerald-600 shrink-0' />
-                      ) : (
-                        <RefreshCw className='w-4 h-4 text-blue-600 shrink-0 animate-spin' />
-                      )}
-                      <span className='truncate'>{statusMessage.text}</span>
-                    </div>
-                  ) : (
-                    <div />
-                  )}
+                  <div className='text-xs font-mono text-slate-500 flex items-center gap-2'>
+                    <span className='w-2 h-2 rounded-full bg-emerald-600' />
+                    EIP-712 Typed Signature · Monad Testnet (10143)
+                  </div>
 
                   <button
                     type='button'
@@ -1416,13 +1382,20 @@ export function HolderDashboard({ contractAddresses }: HolderDashboardProps) {
                     disabled={isSubmitting || (mode === 1 && !isVaultPrereqMet)}
                     className='bg-slate-900 hover:bg-slate-800 text-white font-medium text-xs tracking-wide px-7 py-3 rounded-xl transition duration-200 disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm shrink-0'
                   >
-                    <ShieldCheck className='w-4 h-4' />
-                    {isSubmitting
-                      ? 'Generating Proof & Anchoring...'
-                      : mode === 1 && !isVaultPrereqMet
-                        ? 'Deposit Required to Anchor'
-                        : 'Anchor & Seal Certificate'}
-                    <ArrowRight className='w-3.5 h-3.5' />
+                    {isSubmitting ? (
+                      <>
+                        <RefreshCw className='w-4 h-4 animate-spin text-white' />
+                        Generating Proof & Anchoring...
+                      </>
+                    ) : (
+                      <>
+                        <ShieldCheck className='w-4 h-4' />
+                        {mode === 1 && !isVaultPrereqMet
+                          ? 'Deposit Required to Anchor'
+                          : 'Anchor & Seal Certificate'}
+                        <ArrowRight className='w-3.5 h-3.5' />
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
