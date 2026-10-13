@@ -103,7 +103,12 @@ export async function POST(request: Request) {
       windowSeconds: windowSecondsBigInt,
       issuedAt: issuedAtBigInt,
       issuedAtBlock,
-      tokenDeployBlock: BigInt(process.env.TOKEN_DEPLOY_BLOCK || 0),
+      tokenDeployBlock: BigInt(
+        process.env.TOKEN_DEPLOY_BLOCK ||
+          process.env.NEXT_PUBLIC_TOKEN_DEPLOY_BLOCK ||
+          '70678272',
+      ),
+      mode: proofRequest.mode,
     })
 
     if (proofRequest.mode === 0) {

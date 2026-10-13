@@ -200,6 +200,7 @@ v1.post('/proofs', async c => {
         issuedAt: issuedAtBigInt,
         issuedAtBlock,
         tokenDeployBlock: config.tokenDeployBlock,
+        mode: proofRequest.mode,
       },
     )
 
