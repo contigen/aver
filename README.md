@@ -1,31 +1,25 @@
-# Aver — Proof of Funds That Stays True
+# Aver: Proof of Funds That Stays True
 
-> **Monad Metropolis Hackathon**  
-> **Primary Track**: Track 4 (Trust / Identity & AI Infra) · **Secondary Track**: Track 2 (Consumer & Payments)  
-> **Demo Mantra**: _"Move the money and watch the document die."_
-
----
+> Monad Metropolis Hackathon
+> Primary Track: Track 4 (Trust / Identity & AI Infra) | Secondary Track: Track 2 (Consumer & Payments)
+> Demo Mantra: "Move the money and watch the document die."
 
 ## Overview
 
-Aver issues living, killable proof-of-funds certificates for onchain balances with three critical properties a traditional bank statement or PDF letter cannot provide:
+Aver issues living, revocable proof-of-funds certificates for onchain balances. Unlike static bank PDFs or paper statements, Aver certificates enforce three properties:
 
-1. **Living**: The QR code opens a mobile-first verify page showing proof status _live_ (_"≥ X held continuously since DATE, still true as of 2s ago"_).
-2. **Killable**: Move the funds below the certified threshold, and the verification flips red within 1–2 blocks on Monad testnet.
-3. **Lockable (Guaranteed)**: In Locked mode, funds are locked in an onchain `LockVault` until expiration, turning the certificate into an unbreakable guarantee (the onchain equivalent of blocked accounts used for visa applications and escrow).
-
----
+1. **Living**: The QR code opens a mobile verification page reading live chain state ("≥ X held continuously since DATE, confirmed 2s ago").
+2. **Killable**: If the holder moves funds below the certified threshold, the certificate flips to breached within 1 to 2 blocks on Monad testnet.
+3. **Lockable**: In Locked mode, funds sit inside an onchain `LockVault` until expiration. This turns the certificate into an unbreakable guarantee, mirroring blocked accounts used for visa applications and escrow.
 
 ## Why Monad
 
-Aver relies on structural properties unique to Monad:
+Aver relies on architectural traits specific to Monad:
 
-- **Sub-Second Latency (~300ms blocks, ~600ms finality)**: When a holder moves funds out of their wallet, the attestor and verifiers detect the breach and update onchain state in ~1–2 blocks, providing real-time enforcement.
-- **Micro-Cost Heartbeats and Status Writes**: Periodic attestor liveness heartbeats (`registry.beat()`) and instant status transitions (`markBreached()`) cost fractions of a cent.
-- **MIP-8 Page-Aware Storage**: Monad charges for storage in 128-slot pages (8,100 gas for the first read in a page, ~100 gas for subsequent reads). Aver's certificate struct is packed into 4 contiguous slots, maximizing MIP-8 cache hits and lowering verification costs.
-- **Mera Passkey Authentication**: Seedless, biometric passkey authentication enables everyday users to generate EIP-712 proofs directly from their phone or browser without installing wallet extensions.
-
----
+- **Sub-second latency (~300ms blocks, ~600ms finality)**: When a holder transfers funds out of their wallet, the attestor and verifier detect the balance drop and update state in 1 to 2 blocks.
+- **Low-cost writes**: Periodic attestor heartbeats (`registry.beat()`) and status transitions (`markBreached()`) cost fractions of a cent, making continuous monitoring affordable.
+- **MIP-8 page-aware storage**: Monad prices storage in 128-slot pages (8,100 gas for the first read in a page, ~100 gas for subsequent reads). Aver packs certificate records into 4 contiguous slots so every read hits the warm cache page.
+- **Mera passkey authentication**: Biometric passkeys derive BIP-44 keypairs via WebAuthn PRF. Users sign EIP-712 proof requests directly in browser without seed phrases or browser extensions.
 
 ## System Architecture
 
@@ -51,51 +45,42 @@ Aver relies on structural properties unique to Monad:
          └─────────────────────────────────────────────────────▲
 ```
 
-### Trust & Threat Model
+### Trust and Threat Model
 
-- **Notarized Mode (Default)**: The onchain anchor stores `holderCommitment = keccak256(abi.encode(holder, salt))` and immutable `evidenceHash = keccak256(canonicalJson)`. The verifier sees threshold, token, window, and live validity, but not the holder's address. The attestor acts as a notary.
-- **Evidence Bundles & Provable Attestor Falsifiability**: A false certificate becomes provably false after the fact, because anyone with the evidence can show the attestor lied. It doesn't stop the attestor from lying about which address a certificate belongs to unless the salt is revealed. It also doesn't remove trust, it makes cheating detectable.
-  - **Frozen Bundle**: At issuance, the attestor freezes the exact transfers from `tokenDeployBlock` to `issuedAtBlock` and balance math.
-  - **Onchain Evidence Hash**: `evidenceHash` is recorded onchain in `AverRegistry` and emitted in `Issued`.
-  - **4 Client-Side Checks (Verify Page)**:
-    1. _Hash match_: `keccak256(canonicalize(bundle)) == cert.evidenceHash`.
-    2. _RPC log diff_: Verifier fetches Monad RPC transfer logs directly and diffs against `bundle.transfers`. Catches omitted sells or fabricated buys.
-    3. _Math re-run_: Re-runs timeline and balance math locally in browser. Catches dishonest calculation or fabricated threshold status.
-    4. _Commitment match (Full Disclosure)_: If the holder exports the bundle with salt, proves that the holder's address authenticates the onchain commitment.
-- **Open Mode (Trustless)**: The holder shares a verification link containing `#reveal=<base64({address, salt})>` in the URL hash. The hash is never sent to any server. The verifier's browser recomputes the commitment locally and queries the Monad RPC directly, eliminating all trust in the attestor.
-- **Heartbeat & Staleness**: The attestor broadcasts an onchain `beat()` every 45s. If an attestor goes offline for >120s, the verification page immediately flips from valid to **STALE (Unverified)**.
-- **Locked Mode**: Guarantees are enforced by smart contract logic (`LockVault.sol`), which reverts any early withdrawal before `unlockAt`.
+- **Notarised Mode (Default)**: The onchain anchor records `holderCommitment = keccak256(abi.encode(holder, salt))` and an immutable `evidenceHash = keccak256(canonicalJson)`. The verifier checks the threshold, token, window, and live validity, but cannot see the holder address. The attestor acts as an independent notary.
+- **Evidence bundles and falsifiability**: A dishonest attestor cannot hide a forged certificate once the bundle is published. Anyone with the evidence file can prove the attestor lied:
+  1. _Hash match_: The browser computes `keccak256(canonicalize(bundle))` and compares it against `cert.evidenceHash` stored onchain.
+  2. _RPC log diff_: The verifier fetches transfer logs directly from Monad RPC and diffs them against `bundle.transfers`. This catches omitted withdrawals or fabricated deposits.
+  3. _Timeline verification_: The verifier recalculates historical balances locally across the observation window.
+  4. _Commitment match_: When exported with the salt, the bundle proves the holder address corresponds to the onchain commitment.
+- **Open Mode (Trustless)**: The holder shares a link containing `#reveal=<base64({address, salt})>`. Because browsers never send URL hash fragments to the server, the attestor never receives this payload. The verifier recomputes the commitment and queries Monad RPC directly, bypassing the attestor entirely.
+- **Heartbeat monitoring**: The attestor writes an onchain `beat()` transaction every 45 seconds. If the attestor stops reporting for more than 120 seconds, the verification page marks the certificate as stale.
+- **Locked Mode**: Guarantees depend on `LockVault.sol`, which prevents withdrawals before the `unlockAt` timestamp.
 
----
+## Security Model
 
-## Two-Key Security Model
+Aver separates deployer privileges from operational signing:
 
-Aver enforces a strict separation of privileges between deployer and attestor:
-
-| Role                 | Environment Variable   | Type        | Responsibilities                                                                                       |
-| -------------------- | ---------------------- | ----------- | ------------------------------------------------------------------------------------------------------ |
-| **Deployer (Owner)** | `DEPLOYER_PRIVATE_KEY` | Cold Wallet | Deploys contracts; calls `setAttestor(address, bool)` on `AverRegistry`. Kept offline post-deployment. |
-| **Attestor**         | `ATTESTOR_PRIVATE_KEY` | Hot Wallet  | Signs onchain transactions: `issue()`, `markBreached()`, `revoke()`, and periodic `beat()` heartbeats. |
-| **Initial Attestor** | `initialAttestor`      | Address     | Passed to `AverRegistry` constructor to pre-authorize the attestor wallet at genesis.                  |
-
----
+| Role                 | Environment Variable   | Key Type    | Responsibilities                                                                      |
+| -------------------- | ---------------------- | ----------- | ------------------------------------------------------------------------------------- |
+| **Deployer (Owner)** | `DEPLOYER_PRIVATE_KEY` | Cold wallet | Deploys contracts and calls `setAttestor(address, bool)`. Stays offline after deploy. |
+| **Attestor**         | `ATTESTOR_PRIVATE_KEY` | Hot wallet  | Signs onchain transactions: `issue()`, `markBreached()`, `revoke()`, and `beat()`.    |
+| **Initial Attestor** | `initialAttestor`      | Address     | Passed to the `AverRegistry` constructor to authorise the hot wallet at deployment.   |
 
 ## Smart Contracts
 
-The smart contracts are written in Solidity 0.8.28 with OpenZeppelin v5:
+The smart contracts run on Solidity 0.8.28 with OpenZeppelin v5:
 
-- **[`contracts/AverRegistry.sol`](./contracts/AverRegistry.sol)**: Contiguous packed 4-slot MIP-8 struct, one-way status transitions (`Active` → `Breached` | `Revoked`), `statusOf` view, heartbeat allowlist, and immutable `evidenceHash`.
-- **[`contracts/LockVault.sol`](./contracts/LockVault.sol)**: Packed single-slot `Lock` struct, ReentrancyGuard, SafeERC20, and strictly non-shortenable time-locks.
-- **[`contracts/MockUSDC.sol`](./contracts/MockUSDC.sol)**: 6-decimal testnet token with public faucet (for local/testing environments without official testnet USDC).
+- **[`contracts/AverRegistry.sol`](./contracts/AverRegistry.sol)**: Contiguous 4-slot packed struct, one-way status transitions (`Active` to `Breached` or `Revoked`), `statusOf` view, heartbeat registry, and immutable `evidenceHash`.
+- **[`contracts/LockVault.sol`](./contracts/LockVault.sol)**: Single-slot `Lock` struct, ReentrancyGuard, SafeERC20, and immutable timelocks.
+- **[`contracts/MockUSDC.sol`](./contracts/MockUSDC.sol)**: 6-decimal testnet token with public faucet for isolated test environments.
 - **Official Monad Testnet USDC**: `0x53444318716870d189333917a22e8D54a8164A3A` (6 decimals).
-
----
 
 ## Getting Started
 
 ### Prerequisites
 
-- [Bun](https://bun.sh) (v1.2+)
+- [Bun](https://bun.sh) (v1.2 or later)
 
 ### Installation
 
@@ -105,7 +90,7 @@ cd aver
 bun install
 ```
 
-### Environment Setup
+### Environment Configuration
 
 Copy `.env.example` to `.env.local`:
 
@@ -113,7 +98,7 @@ Copy `.env.example` to `.env.local`:
 cp .env.example .env.local
 ```
 
-Configure your Monad testnet wallet keys in `.env.local`:
+Set your keys and RPC endpoints in `.env.local`:
 
 ```env
 # Monad Testnet Configuration
@@ -127,7 +112,7 @@ NEXT_PUBLIC_USDC_ADDRESS=0x53444318716870d189333917a22e8D54a8164A3A
 NEXT_PUBLIC_MOCK_USDC_ADDRESS=0x53444318716870d189333917a22e8D54a8164A3A
 NEXT_PUBLIC_TOKEN_DEPLOY_BLOCK=0
 
-# Deployed Contracts (Populated after deployment)
+# Deployed Contracts
 NEXT_PUBLIC_LOCK_VAULT_ADDRESS=0x...
 NEXT_PUBLIC_AVER_REGISTRY_ADDRESS=0x...
 
@@ -142,74 +127,65 @@ HEARTBEAT_SECONDS=45
 
 ### Contract Deployment
 
-#### Option A — Automated CLI Deployment
+#### Automated CLI Deployment
 
 ```bash
 bun run deploy
 ```
 
-_Compiles contracts with `solc 0.8.28`, deploys to Monad Testnet, and writes addresses and transaction hashes into `deployments/monad-testnet.json` and `.env.local`._
+This compiles the contracts with `solc 0.8.28`, deploys them to Monad testnet, and writes addresses and transaction hashes into `deployments/monad-testnet.json` and `.env.local`.
 
-#### Option B — Remix IDE Deployment
+#### Remix Deployment
 
-1. Open [Remix IDE](https://remix.ethereum.org) and connect your wallet (e.g. MetaMask) to **Monad Testnet** (Chain ID: `10143`, RPC: `https://testnet-rpc.monad.xyz`).
-2. Deploy **`LockVault.sol`** (no constructor parameters).
-3. Deploy **`AverRegistry.sol`**:
-   - Provide `initialAttestor`: the public wallet address derived from your `ATTESTOR_PRIVATE_KEY`.
-4. Copy the deployed contract addresses into your `.env.local`:
-   - `NEXT_PUBLIC_LOCK_VAULT_ADDRESS=<LockVault address>`
-   - `NEXT_PUBLIC_AVER_REGISTRY_ADDRESS=<AverRegistry address>`
+1. Open [Remix](https://remix.ethereum.org) and connect your wallet to Monad Testnet (Chain ID `10143`, RPC `https://testnet-rpc.monad.xyz`).
+2. Deploy `LockVault.sol` with no constructor arguments.
+3. Deploy `AverRegistry.sol` passing your attestor public address as `initialAttestor`.
+4. Copy the resulting addresses into `NEXT_PUBLIC_LOCK_VAULT_ADDRESS` and `NEXT_PUBLIC_AVER_REGISTRY_ADDRESS` in `.env.local`.
 
----
+## Running the Application
 
-## Running the Services
-
-Start the dedicated Attestor backend (Port 3001):
+Start the attestor service (port 3001):
 
 ```bash
 bun run attestor
 ```
 
-Start the Next.js Web App (Port 3000):
+Start the Next.js web application (port 3000):
 
 ```bash
 bun run dev
 ```
 
-Run unit test suite:
+Run the unit test suite:
 
 ```bash
 bun test
 ```
 
-Run live End-to-End integration test suite (Monad Testnet):
+Run the live onchain integration suite on Monad testnet:
 
 ```bash
 bun run test:e2e
 ```
 
-Run linter:
+Run code formatting and linting:
 
 ```bash
+bun run format
 bun run lint
 ```
 
----
+## Demonstration Workflow
 
-## Live Demo Flow
+1. **Connect Account**: Open `http://localhost:3000/app` and authenticate with MetaMask or a Mera passkey.
+2. **Configure Proof**: Enter the threshold (e.g. 10 USDC) and choose the guarantee mode:
+   - In **Locked Mode**, approve USDC and deposit collateral into `LockVault`.
+   - In **Self-Custody Mode**, sign the EIP-712 `ProofRequest`.
+3. **Issue Certificate**: Click **Anchor & Seal Certificate**. The attestor reads transfer history from Monad RPC, seals the evidence bundle, records `evidenceHash`, and submits `issue()` onchain.
+4. **Inspect Live Status**: Open the verification URL (`/v/[cert-id]`) or scan the QR code to check the live status indicator and attestor heartbeat.
+5. **Simulate Breach**: Transfer USDC out of the holder wallet so the balance drops below the threshold. The monitor detects the transaction on Monad RPC, calls `markBreached()` onchain, and flips the document state to breached.
+6. **Verify Evidence**: Upload the exported `.json` evidence bundle on the verification page. The client verifies the hash match, replays the balance timeline, diffs Monad RPC logs, and confirms the commitment locally.
 
-1. **Connect & Check Balance**: Open `http://localhost:3000/app` and connect your wallet (MetaMask or Mera passkey). Ensure you have testnet USDC on Monad.
-2. **Configure Proof**: Set proof parameters (e.g., Threshold: 1,000 USDC, Window: 7 days) and choose your verification mode (**Notarized**, **Open**, or **Locked**).
-   - In **Locked Mode**, approve and deposit your tokens into `LockVault`.
-   - In **Notarized / Open Mode**, sign the EIP-712 `ProofRequest`.
-3. **Issue Certificate**: Click **Create Proof**. The attestor service verifies balance history from Monad RPC, creates a frozen evidence bundle, computes the `evidenceHash`, and anchors the certificate onchain.
-4. **Live Verification**: Scan the QR code or navigate to `/v/[cert-id]`. Notice the real-time status indicator, timestamp, and active heartbeat from the attestor.
-5. **Trigger Real Breach**: Transfer USDC out of the holder's wallet to another address so the balance drops below the certified threshold.
-6. **Watch the Document Die**: The attestor monitor detects the balance drop via Monad RPC, calls `markBreached(certId, blockNumber)` onchain, and the verification page transitions to **BREACHED — NO LONGER VALID** in ~1–2 blocks.
-7. **Client-Side Evidence Verification**: Verifiers can download the evidence bundle and inspect the 4 client-side checks directly in the browser (bundle hash match, Monad RPC log diff, balance math re-evaluation, and salt commitment check).
+## Licence
 
----
-
-## License
-
-MIT License. See [LICENSE](./LICENSE) for details.
+MIT Licence. See [LICENSE](./LICENSE) for details.
