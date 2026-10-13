@@ -1488,7 +1488,7 @@ export function HolderDashboard({ contractAddresses }: HolderDashboardProps) {
               <div className='pt-6 space-y-5 text-xs font-mono'>
                 <div>
                   <div className='text-slate-600 mb-1 font-semibold text-[11px]'>
-                    Public Verification URL (Share with Landlord / Verifier):
+                    Public Verification URL (Share with Verifier):
                   </div>
                   <div className='flex items-center gap-2 bg-slate-50 border border-slate-200 p-2.5 rounded-xl'>
                     <span className='truncate flex-1 text-slate-900'>
