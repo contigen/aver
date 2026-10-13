@@ -407,6 +407,34 @@ export function VerifyView({ initialCert }: VerifyViewProps) {
         </div>
       </div>
 
+      {cert.requirement && (
+        <div className='p-5 rounded-2xl border border-emerald-300 bg-emerald-50 text-emerald-950 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs'>
+          <div className='flex items-start gap-3.5'>
+            <CheckCircle2 className='w-7 h-7 text-emerald-600 shrink-0 mt-0.5' />
+            <div>
+              <div className='text-xs font-mono font-semibold uppercase tracking-wider text-emerald-700'>
+                Verified Screening Requirement
+              </div>
+              <div className='text-xl font-bold text-slate-900 mt-0.5'>
+                {cert.requirement.title}
+              </div>
+              <div className='text-xs text-slate-600 mt-1'>
+                Required: ≥ $
+                {Number(cert.requirement.minAmount).toLocaleString()}{' '}
+                {cert.requirement.tokenSymbol} (Hold:{' '}
+                {cert.requirement.minHoldSeconds >= 86400
+                  ? `${Math.round(cert.requirement.minHoldSeconds / 86400)} Days`
+                  : `${Math.round(cert.requirement.minHoldSeconds / 3600)} Hours`}
+                ) · Certified: ${formattedThreshold} {cert.tokenSymbol}
+              </div>
+            </div>
+          </div>
+          <div className='px-3.5 py-1.5 rounded-lg bg-emerald-600 text-white font-mono text-xs font-bold shrink-0 self-start sm:self-center shadow-xs'>
+            MEETS REQUIREMENT
+          </div>
+        </div>
+      )}
+
       {renderStatusBanner()}
 
       {revealData &&
