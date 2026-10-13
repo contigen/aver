@@ -74,6 +74,7 @@ const proofRequestSchema = z.object({
     deadline: z.number().int().positive(),
   }),
   signature: z.string().regex(/^0x[a-fA-F0-9]{130}$/),
+  requirementId: z.string().optional(),
 })
 
 const revokeRequestSchema = z.object({

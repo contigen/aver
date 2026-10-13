@@ -50,6 +50,12 @@ export async function GET(
       displayStatus = 'LOCKED_GUARANTEED'
     }
 
+    const reqInfo = localRecord?.requirementId
+      ? (await import('@/lib/cert-store')).getRequirement(
+          localRecord.requirementId,
+        )
+      : undefined
+
     const payload: PublicCertView = {
       certId,
       holderCommitment: onchain.certRaw.holderCommitment,
@@ -68,6 +74,7 @@ export async function GET(
       lastHeartbeat: Number(onchain.lastHeartbeat),
       isHeartbeatFresh,
       anchorTxHash: localRecord?.txHash,
+      requirement: reqInfo ?? undefined,
     }
 
     return NextResponse.json(payload, { status: 200 })
