@@ -2,11 +2,12 @@ import { NextResponse } from 'next/server'
 import { fetchOnchainStatus, getPublicClient } from '@/lib/attestor'
 import { getCertificateRecord } from '@/lib/cert-store'
 import { generateCertificatePdf } from '@/lib/pdf-generator'
+import { resolveAppUrl } from '@/lib/app-url'
 import { erc20Abi } from '@/lib/contracts/abis'
 import type { PublicCertView, VerifyDisplayStatus } from '@/lib/types'
 
 export async function GET(
-  _request: Request,
+  request: Request,
   ctx: { params: Promise<{ 'cert-id': string }> },
 ) {
   try {
@@ -71,7 +72,7 @@ export async function GET(
       anchorTxHash: localRecord?.txHash,
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const appUrl = resolveAppUrl(request)
     const verifyUrl = `${appUrl}/v/${certId}`
     const pdfBytes = await generateCertificatePdf(certView, verifyUrl)
 

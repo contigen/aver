@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { toHex } from 'viem'
 import { saveRequirement, getAllRequirements } from '@/lib/cert-store'
+import { resolveAppUrl } from '@/lib/app-url'
 import type { ProofRequirement } from '@/lib/types'
 
 const createRequirementSchema = z.object({
@@ -67,7 +68,7 @@ export async function POST(request: Request) {
 
     saveRequirement(requirement)
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const appUrl = resolveAppUrl(request)
     return NextResponse.json(
       {
         id,

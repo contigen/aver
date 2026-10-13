@@ -12,6 +12,7 @@ import { getContractAddresses } from '@/lib/chain-config'
 import { getEip712Domain, proofRequestTypes } from '@/lib/eip712'
 import { buildEvidenceBundle } from '@/lib/evidence'
 import { saveCertificateRecord } from '@/lib/cert-store'
+import { resolveAppUrl } from '@/lib/app-url'
 import type { CertificateData, IssueProofResponse } from '@/lib/types'
 
 const proofRequestSchema = z.object({
@@ -215,7 +216,7 @@ export async function POST(request: Request) {
       ...({ evidenceBundle: JSON.stringify(bundle) } as unknown as object),
     })
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const appUrl = resolveAppUrl(request)
     const responsePayload: IssueProofResponse = {
       certId,
       salt,
