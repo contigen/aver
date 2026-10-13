@@ -27,6 +27,7 @@ import {
   encodeAbiParameters,
   parseAbiParameters,
 } from 'viem'
+import { sileo } from 'sileo'
 import { monadTestnet } from '@/lib/chain-config'
 import { erc20Abi } from '@/lib/contracts/abis'
 import { verifyEvidenceBundle } from '@/lib/evidence'
@@ -89,10 +90,26 @@ export function VerifyView({ initialCert }: VerifyViewProps) {
       )
 
       setEvidenceReport(report)
+      if (report.passed) {
+        sileo.success({
+          title: 'Evidence bundle verified',
+          description:
+            'All 4 cryptographic client checks passed against Monad RPC.',
+        })
+      } else {
+        sileo.error({
+          title: 'Evidence verification failed',
+          description: 'One or more client checks detected dishonesty.',
+        })
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err)
       setEvidenceError(msg)
       setEvidenceReport(null)
+      sileo.error({
+        title: 'Evidence error',
+        description: msg,
+      })
     } finally {
       setIsVerifyingEvidence(false)
     }
@@ -232,10 +249,14 @@ export function VerifyView({ initialCert }: VerifyViewProps) {
     })
   }, [cert.holderCommitment, cert.token])
 
-  const copyToClipboard = (text: string, key: string) => {
+  const copyToClipboard = (text: string, key: string, label?: string) => {
     void navigator.clipboard.writeText(text)
     setCopiedKey(key)
     setTimeout(() => setCopiedKey(null), 2000)
+    sileo.success({
+      title: 'Copied to clipboard',
+      description: label || 'Parameter copied.',
+    })
   }
 
   const formattedThreshold = (Number(cert.threshold) / 1e6).toLocaleString(
@@ -250,15 +271,15 @@ export function VerifyView({ initialCert }: VerifyViewProps) {
     switch (cert.displayStatus) {
       case 'BREACHED':
         return (
-          <div className='border border-rose-200 bg-rose-50 p-6 sm:p-7 rounded-2xl text-rose-950 flex flex-col sm:flex-row sm:items-center justify-between gap-5 shadow-xs'>
+          <div className='border border-rose-200 bg-rose-50/80 p-6 sm:p-7 rounded-2xl text-rose-950 flex flex-col sm:flex-row sm:items-center justify-between gap-5 shadow-xs'>
             <div className='flex items-start gap-3.5'>
-              <XCircle className='w-8 h-8 text-rose-600 shrink-0 mt-0.5' />
+              <XCircle className='w-7 h-7 text-rose-600 shrink-0 mt-0.5' />
               <div>
-                <div className='text-2xl font-bold tracking-tight text-rose-800'>
+                <div className='text-xl sm:text-2xl font-bold tracking-tight text-rose-800'>
                   BREACHED — NO LONGER VALID
                 </div>
                 <div className='text-xs sm:text-sm mt-1 text-slate-700 leading-relaxed'>
-                  Holder balance fell below the certified threshold of{' '}
+                  Holder balance dropped below certified threshold of{' '}
                   {formattedThreshold} {cert.tokenSymbol} at block #
                   {cert.evidenceBlock}.
                 </div>
@@ -272,17 +293,16 @@ export function VerifyView({ initialCert }: VerifyViewProps) {
 
       case 'LOCKED_GUARANTEED':
         return (
-          <div className='border border-blue-200 bg-blue-50 p-6 sm:p-7 rounded-2xl text-blue-950 flex flex-col sm:flex-row sm:items-center justify-between gap-5 shadow-xs'>
+          <div className='border border-blue-200 bg-blue-50/70 p-6 sm:p-7 rounded-2xl text-blue-950 flex flex-col sm:flex-row sm:items-center justify-between gap-5 shadow-xs'>
             <div className='flex items-start gap-3.5'>
-              <Lock className='w-8 h-8 text-blue-600 shrink-0 mt-0.5' />
+              <Lock className='w-7 h-7 text-blue-600 shrink-0 mt-0.5' />
               <div>
-                <div className='text-2xl font-bold tracking-tight text-blue-800'>
+                <div className='text-xl sm:text-2xl font-bold tracking-tight text-blue-800'>
                   LOCKED &amp; GUARANTEED
                 </div>
                 <div className='text-xs sm:text-sm mt-1 text-slate-700 leading-relaxed'>
-                  Funds are secured in LockVault until{' '}
-                  {new Date(cert.expiresAt * 1000).toUTCString()}. Cannot be
-                  withdrawn early.
+                  Funds secured in LockVault until{' '}
+                  {new Date(cert.expiresAt * 1000).toUTCString()}.
                 </div>
               </div>
             </div>
@@ -294,16 +314,16 @@ export function VerifyView({ initialCert }: VerifyViewProps) {
 
       case 'STALE':
         return (
-          <div className='border border-amber-200 bg-amber-50 p-6 sm:p-7 rounded-2xl text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-5 shadow-xs'>
+          <div className='border border-amber-200 bg-amber-50/70 p-6 sm:p-7 rounded-2xl text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-5 shadow-xs'>
             <div className='flex items-start gap-3.5'>
-              <AlertTriangle className='w-8 h-8 text-amber-600 shrink-0 mt-0.5' />
+              <AlertTriangle className='w-7 h-7 text-amber-600 shrink-0 mt-0.5' />
               <div>
-                <div className='text-2xl font-bold tracking-tight text-amber-800'>
+                <div className='text-xl sm:text-2xl font-bold tracking-tight text-amber-800'>
                   STALE — MONITOR OFFLINE
                 </div>
                 <div className='text-xs sm:text-sm mt-1 text-slate-700 leading-relaxed'>
-                  Attestor heartbeat is older than 120s. Per protocol rules,
-                  unmonitored status cannot be treated as valid.
+                  Attestor heartbeat is older than 120s. Unmonitored status
+                  cannot be treated as valid.
                 </div>
               </div>
             </div>
@@ -317,9 +337,9 @@ export function VerifyView({ initialCert }: VerifyViewProps) {
         return (
           <div className='border border-slate-200 bg-slate-50 p-6 sm:p-7 rounded-2xl text-slate-900 flex flex-col sm:flex-row sm:items-center justify-between gap-5 shadow-xs'>
             <div className='flex items-start gap-3.5'>
-              <Clock className='w-8 h-8 text-slate-500 shrink-0 mt-0.5' />
+              <Clock className='w-7 h-7 text-slate-500 shrink-0 mt-0.5' />
               <div>
-                <div className='text-2xl font-bold tracking-tight text-slate-700'>
+                <div className='text-xl sm:text-2xl font-bold tracking-tight text-slate-700'>
                   CERTIFICATE EXPIRED
                 </div>
                 <div className='text-xs sm:text-sm mt-1 text-slate-600 leading-relaxed'>
@@ -336,11 +356,11 @@ export function VerifyView({ initialCert }: VerifyViewProps) {
 
       case 'REVOKED':
         return (
-          <div className='border border-rose-200 bg-rose-50 p-6 sm:p-7 rounded-2xl text-rose-950 flex flex-col sm:flex-row sm:items-center justify-between gap-5 shadow-xs'>
+          <div className='border border-rose-200 bg-rose-50/80 p-6 sm:p-7 rounded-2xl text-rose-950 flex flex-col sm:flex-row sm:items-center justify-between gap-5 shadow-xs'>
             <div className='flex items-start gap-3.5'>
-              <Ban className='w-8 h-8 text-rose-600 shrink-0 mt-0.5' />
+              <Ban className='w-7 h-7 text-rose-600 shrink-0 mt-0.5' />
               <div>
-                <div className='text-2xl font-bold tracking-tight text-rose-800'>
+                <div className='text-xl sm:text-2xl font-bold tracking-tight text-rose-800'>
                   REVOKED BY HOLDER
                 </div>
                 <div className='text-xs sm:text-sm mt-1 text-slate-600 leading-relaxed'>
@@ -356,11 +376,11 @@ export function VerifyView({ initialCert }: VerifyViewProps) {
 
       default:
         return (
-          <div className='border border-emerald-200 bg-emerald-50 p-6 sm:p-7 rounded-2xl text-emerald-950 flex flex-col sm:flex-row sm:items-center justify-between gap-5 shadow-xs'>
+          <div className='border border-emerald-200 bg-emerald-50/70 p-6 sm:p-7 rounded-2xl text-emerald-950 flex flex-col sm:flex-row sm:items-center justify-between gap-5 shadow-xs'>
             <div className='flex items-start gap-3.5'>
-              <CheckCircle2 className='w-8 h-8 text-emerald-600 shrink-0 mt-0.5' />
+              <CheckCircle2 className='w-7 h-7 text-emerald-600 shrink-0 mt-0.5' />
               <div>
-                <div className='text-2xl font-bold tracking-tight text-emerald-800'>
+                <div className='text-xl sm:text-2xl font-bold tracking-tight text-emerald-900'>
                   VERIFIED VALID &amp; ACTIVE
                 </div>
                 <div className='text-xs sm:text-sm mt-1 text-slate-700 leading-relaxed'>
@@ -380,28 +400,28 @@ export function VerifyView({ initialCert }: VerifyViewProps) {
   const castCommand = `cast call ${process.env.NEXT_PUBLIC_AVER_REGISTRY_ADDRESS || '0x...'} "statusOf(bytes32)(uint8)" ${cert.certId} --rpc-url https://testnet-rpc.monad.xyz`
 
   return (
-    <div className='flex-1 py-10 sm:py-14 px-4 sm:px-6 max-w-4xl mx-auto w-full space-y-7'>
-      <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-200'>
+    <div className='flex-1 py-10 sm:py-14 px-4 sm:px-6 max-w-4xl mx-auto w-full space-y-6'>
+      <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-200/80'>
         <div>
-          <div className='inline-flex items-center gap-2 px-3 py-1 rounded-full border border-rose-200 bg-rose-50 text-rose-700 text-xs font-mono tracking-wider mb-2'>
-            <span className='w-1.5 h-1.5 rounded-full bg-rose-600 animate-pulse' />
-            Aver Verification Engine · Monad Testnet
+          <div className='inline-flex items-center gap-2 px-3 py-1 rounded-full border border-slate-200 bg-white text-slate-700 text-xs font-mono tracking-wider mb-2 shadow-xs'>
+            <span className='w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse' />
+            Aver Protocol · Monad Testnet
           </div>
-          <h1 className='text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 mt-1'>
-            Proof of Funds Verification
+          <h1 className='text-2xl sm:text-4xl font-extrabold tracking-tight text-slate-900 mt-0.5'>
+            Certificate Verification
           </h1>
         </div>
 
         <div className='flex items-center gap-3'>
-          <div className='font-mono text-xs text-slate-700 flex items-center gap-2 bg-white px-3.5 py-2 rounded-lg border border-slate-200 shadow-xs'>
+          <div className='font-mono text-xs text-slate-700 flex items-center gap-2 bg-white px-3.5 py-2 rounded-xl border border-slate-200 shadow-xs'>
             <span className='w-2 h-2 rounded-full bg-emerald-600 animate-pulse' />
-            As of: {asOfSeconds}s ago
+            Updated {asOfSeconds}s ago
           </div>
           <a
             href={`/api/v1/certs/${cert.certId}/pdf`}
             target='_blank'
             rel='noopener noreferrer'
-            className='bg-slate-900 text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-slate-800 transition flex items-center gap-2 shadow-xs'
+            className='bg-slate-900 text-white text-xs font-semibold px-4 py-2 rounded-xl hover:bg-slate-800 transition flex items-center gap-2 shadow-xs'
           >
             <FileDown className='w-3.5 h-3.5' />
             Download PDF
@@ -410,20 +430,20 @@ export function VerifyView({ initialCert }: VerifyViewProps) {
       </div>
 
       {cert.requirement && (
-        <div className='p-5 rounded-2xl border border-emerald-300 bg-emerald-50 text-emerald-950 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs'>
+        <div className='p-5 rounded-2xl border border-emerald-200 bg-emerald-50/70 text-emerald-950 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs'>
           <div className='flex items-start gap-3.5'>
-            <CheckCircle2 className='w-7 h-7 text-emerald-600 shrink-0 mt-0.5' />
+            <CheckCircle2 className='w-6 h-6 text-emerald-600 shrink-0 mt-0.5' />
             <div>
-              <div className='text-xs font-mono font-semibold uppercase tracking-wider text-emerald-700'>
+              <div className='text-xs font-mono font-semibold uppercase tracking-wider text-emerald-800'>
                 Verified Screening Requirement
               </div>
-              <div className='text-xl font-bold text-slate-900 mt-0.5'>
+              <div className='text-lg sm:text-xl font-bold text-slate-900 mt-0.5'>
                 {cert.requirement.title}
               </div>
-              <div className='text-xs text-slate-600 mt-1'>
-                Required: ≥ $
+              <div className='text-xs text-slate-600 mt-1 leading-relaxed'>
+                Criteria: ≥ $
                 {Number(cert.requirement.minAmount).toLocaleString()}{' '}
-                {cert.requirement.tokenSymbol} (Hold:{' '}
+                {cert.requirement.tokenSymbol} (Observation:{' '}
                 {cert.requirement.minHoldSeconds >= 86400
                   ? `${Math.round(cert.requirement.minHoldSeconds / 86400)} Days`
                   : `${Math.round(cert.requirement.minHoldSeconds / 3600)} Hours`}
@@ -431,7 +451,7 @@ export function VerifyView({ initialCert }: VerifyViewProps) {
               </div>
             </div>
           </div>
-          <div className='px-3.5 py-1.5 rounded-lg bg-emerald-600 text-white font-mono text-xs font-bold shrink-0 self-start sm:self-center shadow-xs'>
+          <div className='px-3.5 py-1.5 rounded-lg bg-emerald-700 text-white font-mono text-xs font-bold shrink-0 self-start sm:self-center shadow-xs'>
             MEETS REQUIREMENT
           </div>
         </div>
@@ -451,8 +471,8 @@ export function VerifyView({ initialCert }: VerifyViewProps) {
             <div
               className={`p-6 rounded-2xl border shadow-xs ${
                 hasFailed
-                  ? 'bg-rose-50 border-rose-200 text-rose-950'
-                  : 'bg-emerald-50 border-emerald-200 text-emerald-950'
+                  ? 'bg-rose-50/80 border-rose-200 text-rose-950'
+                  : 'bg-emerald-50/70 border-emerald-200 text-emerald-950'
               }`}
             >
               <div className='flex items-center gap-2 font-bold text-base mb-2'>
@@ -469,7 +489,7 @@ export function VerifyView({ initialCert }: VerifyViewProps) {
                 ) : (
                   <>
                     <ShieldCheck className='w-5 h-5 text-emerald-600' />
-                    Trustless Open Mode Verification Confirmed
+                    Trustless Direct Reveal Verification Confirmed
                   </>
                 )}
               </div>
@@ -520,21 +540,21 @@ export function VerifyView({ initialCert }: VerifyViewProps) {
           )
         })()}
 
-      <div className='border border-slate-200 bg-white rounded-2xl overflow-hidden divide-y divide-slate-100 shadow-xs'>
+      <div className='border border-slate-200/80 bg-white rounded-2xl overflow-hidden divide-y divide-slate-100 shadow-xs'>
         <div className='p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4'>
           <div>
             <div className='flex items-center gap-2 text-lg font-bold text-slate-900'>
-              <FileJson className='w-5 h-5 text-indigo-700' />
+              <FileJson className='w-5 h-5 text-indigo-600' />
               Check Evidence: Provable Attestor Verification
             </div>
-            <p className='text-xs text-slate-500 mt-1'>
+            <p className='text-xs text-slate-500 mt-0.5'>
               Verify the attestor against raw Monad RPC logs. Cheating becomes
               cryptographically provable.
             </p>
           </div>
 
           {evidenceFileName && (
-            <div className='text-xs font-mono px-3.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200 flex items-center gap-2 truncate max-w-xs text-slate-700'>
+            <div className='text-xs font-mono px-3.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-2 truncate max-w-xs text-slate-700 shadow-xs'>
               <FileJson className='w-3.5 h-3.5 text-indigo-600 shrink-0' />
               <span className='truncate'>{evidenceFileName}</span>
             </div>
@@ -554,10 +574,10 @@ export function VerifyView({ initialCert }: VerifyViewProps) {
               const file = e.dataTransfer.files?.[0]
               if (file) void handleVerifyEvidenceFile(file)
             }}
-            className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 cursor-pointer ${
+            className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-150 cursor-pointer ${
               isDragging
-                ? 'border-indigo-500 bg-indigo-50'
-                : 'border-slate-300 hover:border-indigo-400 bg-slate-50/60'
+                ? 'border-indigo-500 bg-indigo-50/60'
+                : 'border-slate-200 hover:border-slate-400 bg-slate-50/40'
             }`}
           >
             <input
@@ -574,8 +594,8 @@ export function VerifyView({ initialCert }: VerifyViewProps) {
               htmlFor='evidence-file-input'
               className='cursor-pointer flex flex-col items-center gap-2.5'
             >
-              <div className='w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-700 border border-indigo-200'>
-                <Upload className='w-6 h-6' />
+              <div className='w-11 h-11 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 border border-indigo-100'>
+                <Upload className='w-5 h-5' />
               </div>
               <div className='text-sm font-semibold text-slate-900'>
                 {isVerifyingEvidence
@@ -584,7 +604,7 @@ export function VerifyView({ initialCert }: VerifyViewProps) {
               </div>
               <div className='text-xs text-slate-500 max-w-md leading-relaxed'>
                 Runs 4 client-side checks: onchain hash match, RPC log diff,
-                math timeline re-run, and commitment match. No server involved.
+                math timeline re-run, and commitment match.
               </div>
             </label>
           </div>
@@ -601,8 +621,8 @@ export function VerifyView({ initialCert }: VerifyViewProps) {
               <div
                 className={`p-4 rounded-xl border text-xs font-mono flex items-center justify-between gap-3 shadow-xs ${
                   evidenceReport.passed
-                    ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
-                    : 'bg-rose-50 border-rose-200 text-rose-900'
+                    ? 'bg-emerald-50/80 border-emerald-200 text-emerald-900'
+                    : 'bg-rose-50/80 border-rose-200 text-rose-900'
                 }`}
               >
                 <div className='flex items-center gap-2 font-bold text-sm'>
@@ -620,7 +640,7 @@ export function VerifyView({ initialCert }: VerifyViewProps) {
                 </div>
               </div>
 
-              <div className='divide-y divide-slate-100 border border-slate-200 rounded-xl bg-white'>
+              <div className='divide-y divide-slate-100 border border-slate-200/80 rounded-xl bg-white'>
                 {evidenceReport.steps.map((step, idx) => (
                   <div
                     key={step.name}
@@ -666,19 +686,19 @@ export function VerifyView({ initialCert }: VerifyViewProps) {
         </div>
       </div>
 
-      <div className='border border-slate-200 bg-white rounded-2xl overflow-hidden divide-y divide-slate-100 shadow-xs'>
+      <div className='border border-slate-200/80 bg-white rounded-2xl overflow-hidden divide-y divide-slate-100 shadow-xs'>
         <div className='p-6'>
           <h2 className='text-lg font-bold text-slate-900'>
-            Certificate Details
+            Certificate Parameters
           </h2>
-          <p className='text-xs text-slate-500 mt-1'>
+          <p className='text-xs text-slate-500 mt-0.5'>
             Cryptographic proof parameters anchored on Monad testnet.
           </p>
         </div>
 
         <div className='p-6 grid grid-cols-1 sm:grid-cols-2 gap-5 text-xs font-mono'>
           <div>
-            <div className='text-slate-500 uppercase tracking-wider text-[10px]'>
+            <div className='text-slate-400 uppercase tracking-wider text-[10px] font-semibold'>
               Certificate ID
             </div>
             <div className='font-bold truncate mt-1 text-slate-900'>
@@ -687,7 +707,7 @@ export function VerifyView({ initialCert }: VerifyViewProps) {
           </div>
 
           <div>
-            <div className='text-slate-500 uppercase tracking-wider text-[10px]'>
+            <div className='text-slate-400 uppercase tracking-wider text-[10px] font-semibold'>
               Holder Commitment
             </div>
             <div className='font-bold truncate mt-1 text-slate-900'>
@@ -696,7 +716,7 @@ export function VerifyView({ initialCert }: VerifyViewProps) {
           </div>
 
           <div>
-            <div className='text-slate-500 uppercase tracking-wider text-[10px]'>
+            <div className='text-slate-400 uppercase tracking-wider text-[10px] font-semibold'>
               Evidence Hash
             </div>
             <div
@@ -708,7 +728,7 @@ export function VerifyView({ initialCert }: VerifyViewProps) {
           </div>
 
           <div>
-            <div className='text-slate-500 uppercase tracking-wider text-[10px]'>
+            <div className='text-slate-400 uppercase tracking-wider text-[10px] font-semibold'>
               Required Threshold
             </div>
             <div className='font-bold text-sm mt-1 text-slate-900'>
@@ -717,18 +737,18 @@ export function VerifyView({ initialCert }: VerifyViewProps) {
           </div>
 
           <div>
-            <div className='text-slate-500 uppercase tracking-wider text-[10px]'>
+            <div className='text-slate-400 uppercase tracking-wider text-[10px] font-semibold'>
               Operating Mode
             </div>
             <div className='font-bold text-sm mt-1 text-slate-900 flex items-center gap-1.5'>
               {cert.mode === 'Locked' ? (
                 <>
                   <Lock className='w-3.5 h-3.5 text-blue-600' />
-                  Locked (Time-Lock Vault Guarantee)
+                  Locked (Vault Escrow Guarantee)
                 </>
               ) : (
                 <>
-                  <Activity className='w-3.5 h-3.5 text-rose-600' />
+                  <Activity className='w-3.5 h-3.5 text-slate-700' />
                   Observed (Active Balance Monitoring)
                 </>
               )}
@@ -736,7 +756,7 @@ export function VerifyView({ initialCert }: VerifyViewProps) {
           </div>
 
           <div>
-            <div className='text-slate-500 uppercase tracking-wider text-[10px]'>
+            <div className='text-slate-400 uppercase tracking-wider text-[10px] font-semibold'>
               Observation Window
             </div>
             <div className='font-bold mt-1 text-slate-900'>
@@ -746,12 +766,12 @@ export function VerifyView({ initialCert }: VerifyViewProps) {
           </div>
 
           <div>
-            <div className='text-slate-500 uppercase tracking-wider text-[10px]'>
+            <div className='text-slate-400 uppercase tracking-wider text-[10px] font-semibold'>
               Attestor Heartbeat
             </div>
             <div className='font-bold mt-1 text-slate-900 flex items-center gap-1.5'>
               <span
-                className={`w-2 h-2 rounded-full ${cert.isHeartbeatFresh ? 'bg-emerald-600' : 'bg-amber-600'}`}
+                className={`w-2 h-2 rounded-full ${cert.isHeartbeatFresh ? 'bg-emerald-500' : 'bg-amber-500'}`}
               />
               {cert.isHeartbeatFresh
                 ? 'Fresh (Online)'
@@ -760,7 +780,7 @@ export function VerifyView({ initialCert }: VerifyViewProps) {
           </div>
 
           <div>
-            <div className='text-slate-500 uppercase tracking-wider text-[10px]'>
+            <div className='text-slate-400 uppercase tracking-wider text-[10px] font-semibold'>
               Issued At
             </div>
             <div className='font-bold mt-1 text-slate-900'>
@@ -769,7 +789,7 @@ export function VerifyView({ initialCert }: VerifyViewProps) {
           </div>
 
           <div>
-            <div className='text-slate-500 uppercase tracking-wider text-[10px]'>
+            <div className='text-slate-400 uppercase tracking-wider text-[10px] font-semibold'>
               Expires At
             </div>
             <div className='font-bold mt-1 text-slate-900'>
@@ -779,9 +799,9 @@ export function VerifyView({ initialCert }: VerifyViewProps) {
         </div>
 
         {cert.anchorTxHash && (
-          <div className='p-6 flex items-center justify-between gap-4 bg-slate-50'>
+          <div className='p-6 flex items-center justify-between gap-4 bg-slate-50/70'>
             <div className='text-xs truncate'>
-              <span className='text-slate-500 font-mono'>Anchor Tx Hash: </span>
+              <span className='text-slate-400 font-mono'>Anchor Tx Hash: </span>
               <span className='font-mono font-bold truncate text-slate-900'>
                 {cert.anchorTxHash}
               </span>
@@ -790,7 +810,7 @@ export function VerifyView({ initialCert }: VerifyViewProps) {
               href={`https://testnet.monadscan.com/tx/${cert.anchorTxHash}`}
               target='_blank'
               rel='noopener noreferrer'
-              className='text-xs font-semibold text-rose-700 hover:underline flex items-center gap-1 shrink-0'
+              className='text-xs font-semibold text-indigo-600 hover:underline flex items-center gap-1 shrink-0'
             >
               MonadScan
               <ExternalLink className='w-3.5 h-3.5' />
@@ -799,26 +819,28 @@ export function VerifyView({ initialCert }: VerifyViewProps) {
         )}
       </div>
 
-      <div className='border border-slate-200 bg-white rounded-2xl p-6 shadow-xs'>
-        <div className='flex items-center gap-2 mb-2 font-bold text-base text-slate-900'>
-          <Terminal className='w-4 h-4 text-rose-600' />
-          Don&apos;t Trust Us — Verify Directly from Monad RPC
+      <div className='border border-slate-200/80 bg-white rounded-2xl p-6 shadow-xs'>
+        <div className='flex items-center gap-2 mb-1.5 font-bold text-base text-slate-900'>
+          <Terminal className='w-4 h-4 text-slate-700' />
+          Verify Directly from Monad JSON-RPC
         </div>
-        <p className='text-xs text-slate-600 mb-4 leading-relaxed'>
-          Execute this command directly against the Monad JSON-RPC using
+        <p className='text-xs text-slate-500 mb-4 leading-relaxed'>
+          Execute this command directly against Monad JSON-RPC using
           Foundry&apos;s{' '}
           <code className='font-mono text-slate-900 bg-slate-100 px-1 py-0.5 rounded'>
             cast
           </code>{' '}
-          to read onchain state independently:
+          to read onchain registry state independently:
         </p>
 
         <div className='p-3.5 bg-slate-900 text-slate-100 rounded-xl font-mono text-xs flex items-center justify-between gap-3 overflow-x-auto shadow-xs'>
           <span className='break-all'>{castCommand}</span>
           <button
             type='button'
-            onClick={() => copyToClipboard(castCommand, 'cast')}
-            className='border border-slate-700 p-2 rounded-lg hover:bg-slate-800 shrink-0 text-slate-300 hover:text-white transition'
+            onClick={() =>
+              copyToClipboard(castCommand, 'cast', 'Cast command copied')
+            }
+            className='border border-slate-700 p-2 rounded-lg hover:bg-slate-800 shrink-0 text-slate-300 hover:text-white transition shadow-xs'
             title='Copy Command'
           >
             {copiedKey === 'cast' ? (
