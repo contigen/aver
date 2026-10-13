@@ -33,6 +33,7 @@
     "qrcode": "^1.5.4",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "sileo": "^0.1.6",
     "tailwind-merge": "^3.7.0",
     "viem": "^2.57.3",
     "zod": "^4.6.5"
