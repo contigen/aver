@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useSyncExternalStore } from 'react'
 import {
   createPublicClient,
   createWalletClient,
@@ -74,6 +74,19 @@ const client = createPublicClient({
   ),
 })
 
+function subscribeTime(callback: () => void) {
+  const timer = setInterval(callback, 10000)
+  return () => clearInterval(timer)
+}
+
+function getTimeSnapshot() {
+  return Math.floor(Date.now() / 1000)
+}
+
+function getServerSnapshot() {
+  return 0
+}
+
 export function HolderDashboard({ contractAddresses }: HolderDashboardProps) {
   const isConfigured = isContractsConfigured(contractAddresses)
 
@@ -106,6 +119,11 @@ export function HolderDashboard({ contractAddresses }: HolderDashboardProps) {
   const [vaultUnlockAt, setVaultUnlockAt] = useState<bigint>(BigInt(0))
   const [isCheckingVault, setIsCheckingVault] = useState<boolean>(false)
   const [activeTab, setActiveTab] = useState<'holder' | 'verifier'>('holder')
+  const currentTime = useSyncExternalStore(
+    subscribeTime,
+    getTimeSnapshot,
+    getServerSnapshot,
+  )
 
   const [requirementsList, setRequirementsList] = useState<ProofRequirement[]>(
     [],
@@ -234,6 +252,15 @@ export function HolderDashboard({ contractAddresses }: HolderDashboardProps) {
       })
     }
   }, [activeTab, fetchRequirements])
+
+  useEffect(() => {
+    if (statusMessage && statusMessage.type !== 'error') {
+      const timer = setTimeout(() => {
+        setStatusMessage(null)
+      }, 7000)
+      return () => clearTimeout(timer)
+    }
+  }, [statusMessage])
 
   const handleCreateRequirement = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -408,7 +435,9 @@ export function HolderDashboard({ contractAddresses }: HolderDashboardProps) {
     try {
       setIsLocking(true)
       const parsedAmount = parseUnits(thresholdInput, tokenDecimals)
-      const unlockAt = BigInt(Math.floor(Date.now() / 1000) + expiryPreset)
+      const unlockAt = BigInt(
+        Math.floor(Date.now() / 1000) + expiryPreset + 86400,
+      )
       const wallet = getActiveWalletClient()
 
       const approveTx = await wallet.writeContract({
@@ -458,7 +487,17 @@ export function HolderDashboard({ contractAddresses }: HolderDashboardProps) {
 
       const now = Math.floor(Date.now() / 1000)
       const thresholdBase = parseUnits(thresholdInput, tokenDecimals)
-      const expiresAt = now + expiryPreset
+      let expiresAt = now + expiryPreset
+      if (mode === 1) {
+        if (vaultUnlockAt <= BigInt(now)) {
+          setStatusMessage({
+            type: 'error',
+            text: 'Vault lock has expired. Please deposit new funds into LockVault to re-lock.',
+          })
+          return
+        }
+        expiresAt = Math.min(expiresAt, Number(vaultUnlockAt))
+      }
       const deadline = now + 3600
       const nonce = toHex(crypto.getRandomValues(new Uint8Array(32)))
 
@@ -597,7 +636,8 @@ export function HolderDashboard({ contractAddresses }: HolderDashboardProps) {
   const isVaultPrereqMet =
     mode === 1 &&
     parsedThreshold > BigInt(0) &&
-    vaultLockedAmount >= parsedThreshold
+    vaultLockedAmount >= parsedThreshold &&
+    (currentTime === 0 || vaultUnlockAt > BigInt(currentTime))
 
   return (
     <div className='space-y-7'>
@@ -1318,7 +1358,7 @@ export function HolderDashboard({ contractAddresses }: HolderDashboardProps) {
                             locked in LockVault (requires {thresholdInput}{' '}
                             {tokenSymbol}
                             {vaultUnlockAt > BigInt(0) &&
-                              `, unlocks: ${new Date(Number(vaultUnlockAt) * 1000).toLocaleDateString()}`}
+                              `, unlocks: ${new Date(Number(vaultUnlockAt) * 1000).toLocaleDateString()} ${new Date(Number(vaultUnlockAt) * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
                             ). Pre-requisite satisfied — ready to anchor.
                           </>
                         ) : (
@@ -1353,7 +1393,7 @@ export function HolderDashboard({ contractAddresses }: HolderDashboardProps) {
                       {isVaultPrereqMet ? (
                         <>
                           <Check className='w-3.5 h-3.5 text-emerald-700' />
-                          Deposited
+                          Deposited & Locked
                         </>
                       ) : isLocking ? (
                         <>
@@ -1366,6 +1406,25 @@ export function HolderDashboard({ contractAddresses }: HolderDashboardProps) {
                           Lock {thresholdInput} {tokenSymbol}
                         </>
                       )}
+                    </button>
+                  </div>
+                )}
+
+                {statusMessage && statusMessage.type === 'error' && (
+                  <div className='p-4 rounded-xl border border-rose-200 bg-rose-50/95 text-rose-950 text-xs flex items-start justify-between gap-3 shadow-xs'>
+                    <div className='flex items-start gap-2.5'>
+                      <AlertCircle className='w-4 h-4 text-rose-600 shrink-0 mt-0.5' />
+                      <div className='font-mono leading-relaxed break-all'>
+                        {statusMessage.text}
+                      </div>
+                    </div>
+                    <button
+                      type='button'
+                      onClick={() => setStatusMessage(null)}
+                      className='p-1 rounded hover:bg-rose-100 text-rose-400 hover:text-rose-700 shrink-0 cursor-pointer'
+                      title='Dismiss error'
+                    >
+                      <X className='w-3.5 h-3.5' />
                     </button>
                   </div>
                 )}
@@ -1550,7 +1609,7 @@ export function HolderDashboard({ contractAddresses }: HolderDashboardProps) {
       )}
 
       {statusMessage && (
-        <div className='fixed bottom-6 right-6 z-50 max-w-md w-full px-4 sm:px-0 pointer-events-auto'>
+        <div className='fixed top-6 left-1/2 -translate-x-1/2 z-[100] max-w-lg w-full px-4 pointer-events-auto'>
           <div
             className={`p-4 rounded-xl text-xs flex items-start justify-between gap-3 border shadow-2xl backdrop-blur-md ${
               statusMessage.type === 'error'
