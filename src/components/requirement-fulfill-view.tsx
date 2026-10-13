@@ -288,12 +288,7 @@ export function RequirementFulfillView({
         requirementId: requirement.id,
       }
 
-      const attestorBase = process.env.NEXT_PUBLIC_ATTESTOR_URL || ''
-      const endpoint = attestorBase
-        ? `${attestorBase}/v1/proofs`
-        : '/api/v1/proofs'
-
-      const res = await fetch(endpoint, {
+      const res = await fetch('/api/v1/proofs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody),
