@@ -111,48 +111,50 @@ export function VerifyView({ initialCert }: VerifyViewProps) {
 
     let eventSource: EventSource | null = null
     try {
-      eventSource = new EventSource(sseUrl)
-      eventSource.addEventListener('status', e => {
-        try {
-          const payload = JSON.parse(e.data) as {
-            status?: 'Active' | 'Breached' | 'Revoked' | 'Expired'
-            evidenceBlock?: number
-          }
-          if (payload.status) {
-            setCert(prev => ({
-              ...prev,
-              status: payload.status ?? prev.status,
-              displayStatus:
-                payload.status === 'Breached'
-                  ? 'BREACHED'
-                  : payload.status === 'Revoked'
-                    ? 'REVOKED'
-                    : prev.displayStatus,
-              evidenceBlock: payload.evidenceBlock ?? prev.evidenceBlock,
-            }))
-            setAsOfSeconds(0)
-          }
-        } catch {}
-      })
+      if (attestorBase) {
+        eventSource = new EventSource(sseUrl)
+        eventSource.addEventListener('status', e => {
+          try {
+            const payload = JSON.parse(e.data) as {
+              status?: 'Active' | 'Breached' | 'Revoked' | 'Expired'
+              evidenceBlock?: number
+            }
+            if (payload.status) {
+              setCert(prev => ({
+                ...prev,
+                status: payload.status ?? prev.status,
+                displayStatus:
+                  payload.status === 'Breached'
+                    ? 'BREACHED'
+                    : payload.status === 'Revoked'
+                      ? 'REVOKED'
+                      : prev.displayStatus,
+                evidenceBlock: payload.evidenceBlock ?? prev.evidenceBlock,
+              }))
+              setAsOfSeconds(0)
+            }
+          } catch {}
+        })
 
-      eventSource.addEventListener('heartbeat', e => {
-        try {
-          const payload = JSON.parse(e.data) as { lastHeartbeat?: number }
-          if (payload.lastHeartbeat) {
-            setCert(prev => ({
-              ...prev,
-              lastHeartbeat: payload.lastHeartbeat ?? prev.lastHeartbeat,
-              isHeartbeatFresh: true,
-            }))
-            setAsOfSeconds(0)
-          }
-        } catch {}
-      })
+        eventSource.addEventListener('heartbeat', e => {
+          try {
+            const payload = JSON.parse(e.data) as { lastHeartbeat?: number }
+            if (payload.lastHeartbeat) {
+              setCert(prev => ({
+                ...prev,
+                lastHeartbeat: payload.lastHeartbeat ?? prev.lastHeartbeat,
+                isHeartbeatFresh: true,
+              }))
+              setAsOfSeconds(0)
+            }
+          } catch {}
+        })
+      }
     } catch {}
 
     const pollInterval = setInterval(async () => {
       try {
-        const res = await fetch(`${attestorBase}/api/v1/certs/${cert.certId}`)
+        const res = await fetch(`/api/v1/certs/${cert.certId}`)
         if (res.ok) {
           const updated = (await res.json()) as PublicCertView
           setCert(updated)
