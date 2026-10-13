@@ -47,6 +47,20 @@ export type CertificateRecord = {
   mode: number
   txHash: `0x${string}`
   createdAt: number
+  requirementId?: string
+}
+
+export type ProofRequirement = {
+  id: string
+  title: string
+  description?: string
+  token: `0x${string}`
+  tokenSymbol: string
+  minAmount: string
+  minHoldSeconds: number
+  requiredMode: number
+  creator?: `0x${string}`
+  createdAt: number
 }
 
 export type TimelineResult = {
@@ -74,6 +88,7 @@ export type IssueProofRequestBody = {
     deadline: number
   }
   signature: `0x${string}`
+  requirementId?: string
 }
 
 export type IssueProofResponse = {
@@ -102,6 +117,7 @@ export type PublicCertView = {
   lastHeartbeat: number
   isHeartbeatFresh: boolean
   anchorTxHash?: `0x${string}`
+  requirement?: ProofRequirement
 }
 
 export type EvidenceTransfer = {
