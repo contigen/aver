@@ -20,28 +20,40 @@ const main = async () => {
         <meta charset="utf-8" />
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800&family=JetBrains+Mono:wght@600&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body {
             width: 1024px;
             height: 1024px;
-            background: radial-gradient(circle at 50% 30%, #1e1b4b 0%, #0f172a 60%, #020617 100%);
+            background-color: #f8f9fa;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+            font-family: 'Plus Jakarta Sans', -apple-system, system-ui, sans-serif;
             overflow: hidden;
             position: relative;
           }
-          .glow {
+          .ambient-glow {
             position: absolute;
-            width: 600px;
-            height: 600px;
-            background: radial-gradient(circle, rgba(131, 110, 249, 0.25) 0%, rgba(16, 185, 129, 0.15) 50%, transparent 70%);
-            filter: blur(60px);
-            top: 180px;
+            top: -100px;
+            right: -100px;
+            width: 800px;
+            height: 800px;
+            border-radius: 50%;
+            background: radial-gradient(circle at center, rgba(225, 29, 72, 0.04) 0%, rgba(245, 158, 11, 0.02) 40%, transparent 70%);
+            pointer-events: none;
+          }
+          .ambient-glow-left {
+            position: absolute;
+            bottom: -150px;
+            left: -150px;
+            width: 700px;
+            height: 700px;
+            border-radius: 50%;
+            background: radial-gradient(circle at center, rgba(16, 185, 129, 0.04) 0%, transparent 60%);
+            pointer-events: none;
           }
           .card {
             position: relative;
@@ -51,91 +63,100 @@ const main = async () => {
             align-items: center;
             justify-content: center;
           }
-          .icon-container {
-            width: 360px;
-            height: 360px;
-            border-radius: 96px;
-            background: linear-gradient(145deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.02) 100%);
-            border: 2px solid rgba(255, 255, 255, 0.18);
+          .icon-squircle {
+            width: 320px;
+            height: 320px;
+            border-radius: 80px;
+            background: #ffffff;
+            border: 2px solid #e2e8f0;
             box-shadow: 
-              0 30px 80px -15px rgba(0, 0, 0, 0.7),
-              inset 0 1px 2px rgba(255, 255, 255, 0.3),
-              0 0 50px rgba(131, 110, 249, 0.2);
-            backdrop-filter: blur(20px);
+              0 30px 60px -12px rgba(15, 23, 42, 0.08),
+              0 12px 24px -8px rgba(15, 23, 42, 0.04),
+              0 0 0 1px rgba(15, 23, 42, 0.02);
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-bottom: 48px;
+            margin-bottom: 44px;
+            position: relative;
+          }
+          .icon-badge {
+            width: 220px;
+            height: 220px;
+            border-radius: 56px;
+            background: #fff1f2;
+            border: 2px solid #fecdd3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
           }
           .title {
             font-size: 88px;
             font-weight: 800;
-            letter-spacing: -0.04em;
-            color: #ffffff;
-            margin-bottom: 12px;
+            letter-spacing: -0.045em;
+            color: #0f172a;
+            margin-bottom: 8px;
             display: flex;
             align-items: center;
             gap: 16px;
+            line-height: 1;
           }
           .subtitle {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 20px;
+            font-size: 19px;
             font-weight: 600;
-            letter-spacing: 0.32em;
+            letter-spacing: 0.3em;
             text-transform: uppercase;
-            color: #94a3b8;
+            color: #64748b;
           }
           .badge {
-            margin-top: 32px;
+            margin-top: 36px;
             display: inline-flex;
             align-items: center;
             gap: 10px;
-            background: rgba(16, 185, 129, 0.12);
-            border: 1px solid rgba(16, 185, 129, 0.3);
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
             padding: 10px 24px;
             border-radius: 9999px;
             font-family: 'JetBrains Mono', monospace;
-            font-size: 15px;
-            color: #34d399;
-            letter-spacing: 0.1em;
+            font-size: 14px;
+            font-weight: 600;
+            color: #334155;
+            letter-spacing: 0.12em;
           }
           .dot {
             width: 8px;
             height: 8px;
             border-radius: 50%;
-            background: #10b981;
-            box-shadow: 0 0 10px #10b981;
+            background: #e11d48;
+            box-shadow: 0 0 0 3px rgba(225, 29, 72, 0.2);
           }
         </style>
       </head>
       <body>
-        <div class="glow"></div>
+        <div class="ambient-glow"></div>
+        <div class="ambient-glow-left"></div>
         <div class="card">
-          <div class="icon-container">
-            <svg width="200" height="200" viewBox="0 0 24 24" fill="none" stroke="url(#shieldGrad)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-              <defs>
-                <linearGradient id="shieldGrad" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
-                  <stop offset="0%" stop-color="#ffffff" />
-                  <stop offset="50%" stop-color="#836ef9" />
-                  <stop offset="100%" stop-color="#10b981" />
-                </linearGradient>
-              </defs>
-              <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
-              <path d="m9 12 2 2 4-4" stroke="#10b981" stroke-width="2.2" />
-            </svg>
+          <div class="icon-squircle">
+            <div class="icon-badge">
+              <svg width="130" height="130" viewBox="0 0 24 24" fill="none" stroke="#e11d48" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
+                <path d="m9 12 2 2 4-4" stroke="#059669" stroke-width="2.4" />
+              </svg>
+            </div>
           </div>
           <div class="title">Aver</div>
           <div class="subtitle">Proof of Funds</div>
           <div class="badge">
             <div class="dot"></div>
-            MONAD TESTNET
+            MONAD TESTNET · MIP-8
           </div>
         </div>
       </body>
     </html>
   `
 
-  await page.setContent(html, { waitUntil: 'networkidle0' })
+  await page.setContent(html, { waitUntil: 'domcontentloaded' })
   await page.evaluateHandle('document.fonts.ready')
 
   const publicPath = path.join(process.cwd(), 'public', 'logo.png')
