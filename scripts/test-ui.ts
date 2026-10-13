@@ -1,6 +1,6 @@
 import fs from 'fs'
 import path from 'path'
-import puppeteer from 'puppeteer-core'
+import puppeteer, { type ElementHandle } from 'puppeteer-core'
 import {
   createPublicClient,
   createWalletClient,
@@ -40,7 +40,7 @@ const ensureDir = (p: string) => {
 
 const createLiveTestCert = async (
   statusToSet: 'Active' | 'Breached',
-): Promise<string> => {
+): Promise<{ certId: string; bundlePath: string }> => {
   const rpcUrl =
     process.env.NEXT_PUBLIC_RPC_URL || 'https://testnet-rpc.monad.xyz'
   const publicClient = createPublicClient({
@@ -138,7 +138,6 @@ const createLiveTestCert = async (
     holder: holderAccount.address,
     salt,
     evidenceHash,
-    evidenceBundle: bundle,
     token: usdc,
     threshold: threshold.toString(),
     windowSeconds: Number(windowSeconds),
@@ -197,8 +196,9 @@ const main = async () => {
     }
   })
 
-  page.on('pageerror', err => {
-    consoleErrors.push(err.message)
+  page.on('pageerror', (err: unknown) => {
+    const msg = err instanceof Error ? err.message : String(err)
+    consoleErrors.push(msg)
   })
 
   await page.goto('http://localhost:3000', { waitUntil: 'networkidle0' })
@@ -259,10 +259,12 @@ const main = async () => {
     fs.existsSync(verifyActiveShotPath),
   )
 
-  const fileInput = await page.$('#evidence-file-input')
+  const fileInput = (await page.$(
+    '#evidence-file-input',
+  )) as ElementHandle<HTMLInputElement> | null
   if (fileInput) {
     await fileInput.uploadFile(activeCert.bundlePath)
-    await fileInput.evaluate(el =>
+    await fileInput.evaluate((el: Element) =>
       el.dispatchEvent(new Event('change', { bubbles: true })),
     )
     await page.waitForFunction(
