@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Geist_Mono } from 'next/font/google'
 import Link from 'next/link'
 import { ShieldCheck } from 'lucide-react'
+import { AppToaster } from '@/components/toaster'
 import './globals.css'
 
 const geistMono = Geist_Mono({
@@ -12,13 +13,14 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: 'Aver — Proof of Funds That Stays True',
   description:
-    'Living, killable, and lockable proof-of-funds certificates on Monad testnet.',
+    'Living, killable, and lockable proof-of-funds certificates on Monad.',
 }
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
     <html lang='en' className={`${geistMono.variable} h-full antialiased`}>
       <body className='min-h-full flex flex-col bg-[var(--background)] text-[var(--foreground)] relative overflow-x-hidden'>
+        <AppToaster />
         <div className='ambient-glow' aria-hidden='true' />
 
         <aside
