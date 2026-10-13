@@ -1,0 +1,25 @@
+{
+  "chainId": 10143,
+  "network": "monad-testnet",
+  "rpc": "https://testnet-rpc.monad.xyz",
+  "wss": "wss://testnet-rpc.monad.xyz",
+  "explorer": "https://testnet.monadscan.com",
+  "contracts": {
+    "USDC": {
+      "address": "0x53444318716870d189333917a22e8D54a8164A3A",
+      "txHash": "existing",
+      "deployBlock": 0
+    },
+    "LockVault": {
+      "address": "0x2f243c7b5a38486bc1d43c43270910ddbe8ba27d",
+      "txHash": "0xa7435a22275b9cb7d2dc22a27a6f173a87b8fe66116e14310d594073fecdc11d",
+      "deployBlock": 70678272
+    },
+    "AverRegistry": {
+      "address": "0xd86e5ec9eed3580e93c7f58a0ecab1b3b1633918",
+      "txHash": "0x45a9ca6eaeda1688fca52f4b03cd1903c60bd6ab1ff025d8bd2dc453f7a7097d",
+      "deployBlock": 70678275
+    }
+  },
+  "attestorAddress": "0x12a6Afaf70f20Ee5B409Bde5332c72080516D832"
+}
