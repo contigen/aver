@@ -223,6 +223,7 @@ export async function POST(request: Request) {
       txHash,
       pdfUrl: `/api/v1/certs/${certId}/pdf`,
       verifyUrl: `${appUrl}/v/${certId}`,
+      evidenceBundle: bundle,
     }
 
     return NextResponse.json(responsePayload, { status: 201 })

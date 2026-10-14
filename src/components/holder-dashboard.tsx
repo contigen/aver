@@ -46,6 +46,7 @@ import type {
   IssueProofResponse,
   IssueProofRequestBody,
   ProofRequirement,
+  EvidenceBundle,
 } from '@/lib/types'
 
 type EthereumProvider = {
@@ -66,6 +67,7 @@ type CreatedCert = {
   mode: 'Observed' | 'Locked'
   threshold: string
   tokenSymbol: string
+  evidenceBundle?: EvidenceBundle
 }
 
 const client = createPublicClient({
@@ -578,6 +580,7 @@ export function HolderDashboard({ contractAddresses }: HolderDashboardProps) {
         mode: mode === 1 ? 'Locked' : 'Observed',
         threshold: thresholdInput,
         tokenSymbol,
+        evidenceBundle: data.evidenceBundle,
       })
 
       sileo.success({
@@ -597,22 +600,32 @@ export function HolderDashboard({ contractAddresses }: HolderDashboardProps) {
     if (!createdCert) return
     try {
       setIsDownloadingEvidence(true)
-      const queryParam = includeSalt ? '?full=true' : ''
 
-      const res = await fetch(
-        `/api/v1/certs/${createdCert.certId}/evidence${queryParam}`,
-        {
-          headers: {
-            Authorization: `Bearer ${createdCert.salt}`,
+      let bundle: EvidenceBundle | null = null
+      if (createdCert.evidenceBundle) {
+        bundle = { ...createdCert.evidenceBundle }
+        if (includeSalt) {
+          bundle.salt = createdCert.salt
+        }
+      } else {
+        const queryParam = includeSalt ? '?full=true' : ''
+        const res = await fetch(
+          `/api/v1/certs/${createdCert.certId}/evidence${queryParam}`,
+          {
+            headers: {
+              Authorization: `Bearer ${createdCert.salt}`,
+              'x-holder': activeAddress || '',
+            },
           },
-        },
-      )
+        )
 
-      if (!res.ok) {
-        throw new Error(`Failed to fetch evidence bundle (${res.status})`)
+        if (!res.ok) {
+          throw new Error(`Failed to fetch evidence bundle (${res.status})`)
+        }
+
+        bundle = (await res.json()) as EvidenceBundle
       }
 
-      const bundle = await res.json()
       const blob = new Blob([JSON.stringify(bundle, null, 2)], {
         type: 'application/json',
       })

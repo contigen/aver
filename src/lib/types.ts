@@ -97,6 +97,7 @@ export type IssueProofResponse = {
   txHash: `0x${string}`
   pdfUrl: string
   verifyUrl: string
+  evidenceBundle?: EvidenceBundle
 }
 
 export type PublicCertView = {

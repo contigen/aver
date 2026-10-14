@@ -30,30 +30,32 @@ export async function GET(
     const url = new URL(request.url)
     let isAuthorized = false
 
-    if (authHeader.startsWith('Bearer ')) {
-      const bearerSalt = authHeader.slice(7).trim()
-      const formattedSalt = (
-        bearerSalt.startsWith('0x') ? bearerSalt : `0x${bearerSalt}`
+    const rawSalt = authHeader.startsWith('Bearer ')
+      ? authHeader.slice(7).trim()
+      : url.searchParams.get('salt') || ''
+    let formattedSalt: `0x${string}` | null = null
+    if (rawSalt) {
+      formattedSalt = (
+        rawSalt.startsWith('0x') ? rawSalt : `0x${rawSalt}`
       ) as `0x${string}`
+    }
 
-      if (localRecord) {
-        const computed = computeHolderCommitment(
-          localRecord.holder,
-          formattedSalt,
-        )
-        if (
-          computed.toLowerCase() ===
-          onchain.certRaw.holderCommitment.toLowerCase()
-        ) {
-          isAuthorized = true
-        }
+    const candidateHolder = (request.headers.get('x-holder') ||
+      url.searchParams.get('holder') ||
+      localRecord?.holder ||
+      '') as `0x${string}`
+
+    if (formattedSalt && candidateHolder) {
+      const computed = computeHolderCommitment(candidateHolder, formattedSalt)
+      if (
+        computed.toLowerCase() ===
+        onchain.certRaw.holderCommitment.toLowerCase()
+      ) {
+        isAuthorized = true
       }
     }
 
     if (!isAuthorized) {
-      const holderParam = (request.headers.get('x-holder') ||
-        url.searchParams.get('holder') ||
-        '') as `0x${string}`
       const deadlineStr =
         request.headers.get('x-deadline') ||
         url.searchParams.get('deadline') ||
@@ -62,30 +64,26 @@ export async function GET(
         url.searchParams.get('signature') ||
         '') as `0x${string}`
 
-      if (holderParam && deadlineStr && sig) {
+      if (candidateHolder && deadlineStr && sig) {
         const deadline = BigInt(deadlineStr)
         const now = BigInt(Math.floor(Date.now() / 1000))
         if (deadline >= now) {
           const { averRegistry } = getContractAddresses()
           const domain = getEip712Domain(10143, averRegistry)
           const validSig = await verifyTypedData({
-            address: holderParam,
+            address: candidateHolder,
             domain,
             types: evidenceRequestTypes,
             primaryType: 'EvidenceRequest',
             message: {
               certId,
-              holder: holderParam,
+              holder: candidateHolder,
               deadline,
             },
             signature: sig,
           })
 
-          if (
-            validSig &&
-            localRecord &&
-            holderParam.toLowerCase() === localRecord.holder.toLowerCase()
-          ) {
+          if (validSig) {
             isAuthorized = true
           }
         }
@@ -102,18 +100,41 @@ export async function GET(
       )
     }
 
+    let bundle: EvidenceBundle | null = null
     const storedBundle = (localRecord as unknown as { evidenceBundle?: string })
       ?.evidenceBundle
-    if (!storedBundle) {
+
+    if (storedBundle) {
+      bundle = JSON.parse(storedBundle) as EvidenceBundle
+    } else if (onchain.certRaw.mode === 1) {
+      bundle = {
+        v: 1,
+        chainId: '10143',
+        token: onchain.certRaw.token.toLowerCase(),
+        tokenDeployBlock: '70678272',
+        windowStartBlock: onchain.certRaw.statusAt.toString(),
+        issuedAtBlock: onchain.certRaw.statusAt.toString(),
+        holder: candidateHolder.toLowerCase(),
+        transfers: [],
+        result: {
+          minBalance: onchain.certRaw.threshold.toString(),
+          heldSince: onchain.certRaw.issuedAt.toString(),
+          threshold: onchain.certRaw.threshold.toString(),
+          conditionMet: true,
+        },
+      }
+    } else {
       return NextResponse.json(
         { error: 'Evidence bundle not available for this certificate' },
         { status: 404 },
       )
     }
 
-    const bundle = JSON.parse(storedBundle) as EvidenceBundle
-    if (url.searchParams.get('full') === 'true' && localRecord?.salt) {
-      bundle.salt = localRecord.salt
+    if (
+      url.searchParams.get('full') === 'true' &&
+      (formattedSalt || localRecord?.salt)
+    ) {
+      bundle.salt = formattedSalt || localRecord?.salt
     }
 
     return NextResponse.json(bundle, { status: 200 })

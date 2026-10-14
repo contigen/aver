@@ -295,19 +295,35 @@ export function VerifyView({ initialCert }: VerifyViewProps) {
         return (
           <div className='border border-blue-200 bg-blue-50/70 p-6 sm:p-7 rounded-2xl text-blue-950 flex flex-col sm:flex-row sm:items-center justify-between gap-5 shadow-xs'>
             <div className='flex items-start gap-3.5'>
-              <Lock className='w-7 h-7 text-blue-600 shrink-0 mt-0.5' />
+              <div className='w-10 h-10 rounded-xl bg-blue-100/90 border border-blue-200 flex items-center justify-center text-blue-700 shrink-0 mt-0.5 shadow-2xs'>
+                <Lock className='w-5 h-5' />
+              </div>
               <div>
-                <div className='text-xl sm:text-2xl font-bold tracking-tight text-blue-800'>
-                  LOCKED &amp; GUARANTEED
+                <div className='flex items-center gap-2 mb-1'>
+                  <span className='inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold bg-emerald-100 text-emerald-800 border border-emerald-300'>
+                    <span className='w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse' />
+                    VERIFIED VALID
+                  </span>
+                  <span className='text-xs font-mono uppercase tracking-wider text-blue-700 font-semibold'>
+                    Vault-Locked Escrow
+                  </span>
                 </div>
-                <div className='text-xs sm:text-sm mt-1 text-slate-700 leading-relaxed'>
-                  Funds secured in LockVault until{' '}
-                  {new Date(cert.expiresAt * 1000).toUTCString()}.
+                <div className='text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900'>
+                  {formattedThreshold} {cert.tokenSymbol} Locked &amp;
+                  Guaranteed
+                </div>
+                <div className='text-xs sm:text-sm mt-1 text-slate-600 leading-relaxed'>
+                  Capital is secured non-custodially in smart contract{' '}
+                  <code className='text-slate-800 font-mono bg-white/80 px-1 py-0.5 rounded border border-blue-200'>
+                    LockVault
+                  </code>{' '}
+                  until {new Date(cert.expiresAt * 1000).toUTCString()}. Funds
+                  cannot be withdrawn or moved.
                 </div>
               </div>
             </div>
-            <div className='font-mono text-xs text-blue-800 uppercase tracking-widest bg-blue-100 border border-blue-200 px-3.5 py-1.5 rounded-lg self-start sm:self-center shrink-0 font-semibold'>
-              State: Vault-Guaranteed
+            <div className='font-mono text-xs text-blue-900 uppercase tracking-widest bg-blue-100/90 border border-blue-200 px-3.5 py-1.5 rounded-lg self-start sm:self-center shrink-0 font-bold'>
+              State: Valid (Vault-Locked)
             </div>
           </div>
         )
@@ -545,11 +561,15 @@ export function VerifyView({ initialCert }: VerifyViewProps) {
           <div>
             <div className='flex items-center gap-2 text-lg font-bold text-slate-900'>
               <FileJson className='w-5 h-5 text-indigo-600' />
-              Check Evidence: Provable Attestor Verification
+              <span>Independent Cryptographic Audit</span>
+              <span className='text-[10px] font-mono uppercase tracking-wider bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md border border-slate-200 font-semibold'>
+                Optional
+              </span>
             </div>
             <p className='text-xs text-slate-500 mt-0.5'>
-              Verify the attestor against raw Monad RPC logs. Cheating becomes
-              cryptographically provable.
+              Certificate is verified onchain. For technical auditors: drop the
+              evidence bundle to mathematically audit against raw Monad RPC
+              logs.
             </p>
           </div>
 
