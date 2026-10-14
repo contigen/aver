@@ -378,6 +378,16 @@ export function RequirementFulfillView({
             <AlertCircle className='w-4 h-4 shrink-0 mt-0.5 text-rose-600' />
             <div className='font-mono leading-relaxed break-all'>
               {actionError}
+              {actionError.includes(
+                'Holder balance did not satisfy threshold',
+              ) && (
+                <div className='mt-1.5 font-sans text-rose-800 text-[11px] font-normal'>
+                  Tip: Your account was funded recently and has not held this
+                  balance across the full historical observation window. Switch
+                  to <strong>Vault Escrow</strong> to lock funds and certify
+                  immediately, or choose a shorter observation window.
+                </div>
+              )}
             </div>
           </div>
           <button

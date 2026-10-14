@@ -1425,6 +1425,18 @@ export function HolderDashboard({ contractAddresses }: HolderDashboardProps) {
                       <AlertCircle className='w-4 h-4 text-rose-600 shrink-0 mt-0.5' />
                       <div className='font-mono leading-relaxed break-all'>
                         {actionError}
+                        {actionError.includes(
+                          'Holder balance did not satisfy threshold',
+                        ) && (
+                          <div className='mt-1.5 font-sans text-rose-800 text-[11px] font-normal'>
+                            Tip: Your account was funded recently and has not
+                            held this balance across the full historical
+                            observation window. Select{' '}
+                            <strong>Vault Escrow</strong> above to lock funds
+                            and certify immediately, or choose a shorter
+                            observation window.
+                          </div>
+                        )}
                       </div>
                     </div>
                     <button
