@@ -1,9 +1,5 @@
 # Aver: Proof of Funds That Stays True
 
-> Monad Metropolis Hackathon
-> Primary Track: Track 4 (Trust / Identity & AI Infra) | Secondary Track: Track 2 (Consumer & Payments)
-> Demo Mantra: "Move the money and watch the document die."
-
 ## Overview
 
 Aver issues living, revocable proof-of-funds certificates for onchain balances. Unlike static bank PDFs or paper statements, Aver certificates enforce three properties:
@@ -85,7 +81,7 @@ The smart contracts run on Solidity 0.8.28 with OpenZeppelin v5:
 ### Installation
 
 ```bash
-git clone https://github.com/aver-protocol/aver.git
+git clone https://github.com/contigen/aver.git
 cd aver
 bun install
 ```
