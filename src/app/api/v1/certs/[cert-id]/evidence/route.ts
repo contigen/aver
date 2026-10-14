@@ -1,9 +1,14 @@
 import { NextResponse } from 'next/server'
 import { verifyTypedData } from 'viem'
-import { computeHolderCommitment, fetchOnchainStatus } from '@/lib/attestor'
+import {
+  computeHolderCommitment,
+  fetchOnchainStatus,
+  getPublicClient,
+} from '@/lib/attestor'
 import { getContractAddresses } from '@/lib/chain-config'
 import { getCertificateRecord } from '@/lib/cert-store'
 import { getEip712Domain, evidenceRequestTypes } from '@/lib/eip712'
+import { buildEvidenceBundle } from '@/lib/evidence'
 import type { EvidenceBundle } from '@/lib/types'
 
 export async function GET(
@@ -122,6 +127,30 @@ export async function GET(
           threshold: onchain.certRaw.threshold.toString(),
           conditionMet: true,
         },
+      }
+    } else if (candidateHolder) {
+      try {
+        const publicClient = getPublicClient()
+        const evidenceData = await buildEvidenceBundle(publicClient, {
+          chainId: 10143,
+          token: onchain.certRaw.token,
+          holder: candidateHolder,
+          threshold: onchain.certRaw.threshold,
+          windowSeconds: onchain.certRaw.windowSeconds,
+          issuedAt: onchain.certRaw.issuedAt,
+          issuedAtBlock:
+            onchain.certRaw.evidenceBlock || onchain.certRaw.statusAt,
+          tokenDeployBlock: BigInt(
+            process.env.NEXT_PUBLIC_TOKEN_DEPLOY_BLOCK || '70678272',
+          ),
+          mode: onchain.certRaw.mode,
+        })
+        bundle = evidenceData.bundle
+      } catch {
+        return NextResponse.json(
+          { error: 'Evidence bundle not available for this certificate' },
+          { status: 404 },
+        )
       }
     } else {
       return NextResponse.json(

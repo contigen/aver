@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { toHex } from 'viem'
-import { saveRequirement, getAllRequirements } from '@/lib/cert-store'
+import {
+  saveRequirement,
+  getAllRequirements,
+  encodeRequirementId,
+} from '@/lib/cert-store'
 import { resolveAppUrl } from '@/lib/app-url'
 import type { ProofRequirement } from '@/lib/types'
 
@@ -49,12 +53,10 @@ export async function POST(request: Request) {
     }
 
     const data = parseResult.data
-    const id = `req_${toHex(crypto.getRandomValues(new Uint8Array(6))).slice(2)}`
     const defaultToken: `0x${string}` =
       '0x534b2f3A21130d7a60830c2Df862319e593943A3'
 
-    const requirement: ProofRequirement = {
-      id,
+    const requirementPayload = {
       title: data.title,
       description: data.description,
       token: (data.token as `0x${string}`) || defaultToken,
@@ -64,6 +66,12 @@ export async function POST(request: Request) {
       requiredMode: data.requiredMode,
       creator: data.creator as `0x${string}` | undefined,
       createdAt: Math.floor(Date.now() / 1000),
+    }
+
+    const id = encodeRequirementId(requirementPayload)
+    const requirement: ProofRequirement = {
+      id,
+      ...requirementPayload,
     }
 
     saveRequirement(requirement)

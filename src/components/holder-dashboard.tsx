@@ -242,10 +242,36 @@ export function HolderDashboard({ contractAddresses }: HolderDashboardProps) {
 
   const fetchRequirements = useCallback(async () => {
     try {
+      let localReqs: ProofRequirement[] = []
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem('aver_requirements')
+        if (stored) {
+          try {
+            localReqs = JSON.parse(stored) as ProofRequirement[]
+          } catch {}
+        }
+      }
+
       const res = await fetch('/api/v1/requirements')
+      let serverReqs: ProofRequirement[] = []
       if (res.ok) {
         const data = (await res.json()) as { requirements: ProofRequirement[] }
-        setRequirementsList(data.requirements || [])
+        serverReqs = data.requirements || []
+      }
+
+      const map = new Map<string, ProofRequirement>()
+      for (const req of serverReqs) {
+        map.set(req.id.toLowerCase(), req)
+      }
+      for (const req of localReqs) {
+        map.set(req.id.toLowerCase(), req)
+      }
+      const merged = Array.from(map.values()).sort(
+        (a, b) => b.createdAt - a.createdAt,
+      )
+      setRequirementsList(merged)
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('aver_requirements', JSON.stringify(merged))
       }
     } catch (err: unknown) {
       console.error('Failed to load requirements:', err)
@@ -281,9 +307,30 @@ export function HolderDashboard({ contractAddresses }: HolderDashboardProps) {
         }),
       })
 
-      const data = (await res.json()) as { url?: string; error?: string }
+      const data = (await res.json()) as {
+        url?: string
+        requirement?: ProofRequirement
+        error?: string
+      }
       if (!res.ok) {
         throw new Error(data.error || 'Failed to create requirement')
+      }
+
+      if (data.requirement && typeof window !== 'undefined') {
+        const stored = localStorage.getItem('aver_requirements')
+        let localReqs: ProofRequirement[] = []
+        if (stored) {
+          try {
+            localReqs = JSON.parse(stored) as ProofRequirement[]
+          } catch {}
+        }
+        const updated = [
+          data.requirement,
+          ...localReqs.filter(
+            r => r.id.toLowerCase() !== data.requirement?.id.toLowerCase(),
+          ),
+        ]
+        localStorage.setItem('aver_requirements', JSON.stringify(updated))
       }
 
       setCreatedReqUrl(data.url || null)
