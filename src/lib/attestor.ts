@@ -158,6 +158,52 @@ export const sendHeartbeatOnchain = async (): Promise<`0x${string}`> => {
   return txHash
 }
 
+let lastAutoBeatTs = 0
+let autoBeatPromise: Promise<void> | null = null
+
+export const ensureFreshHeartbeat = async (
+  currentLastHeartbeat: bigint,
+): Promise<bigint> => {
+  const now = Math.floor(Date.now() / 1000)
+  const age = now - Number(currentLastHeartbeat)
+  if (age <= 90) {
+    return currentLastHeartbeat
+  }
+
+  if (!process.env.ATTESTOR_PRIVATE_KEY) {
+    return currentLastHeartbeat
+  }
+
+  if (Date.now() - lastAutoBeatTs < 15000) {
+    return currentLastHeartbeat
+  }
+
+  if (!autoBeatPromise) {
+    lastAutoBeatTs = Date.now()
+    autoBeatPromise = (async () => {
+      try {
+        await sendHeartbeatOnchain()
+      } catch (err) {
+        console.error('Auto heartbeat error:', err)
+      } finally {
+        autoBeatPromise = null
+      }
+    })()
+  }
+
+  await autoBeatPromise
+  const client = getPublicClient()
+  const { averRegistry } = getContractAddresses()
+  const updatedBeat = (await client
+    .readContract({
+      address: averRegistry,
+      abi: averRegistryAbi,
+      functionName: 'lastHeartbeat',
+    })
+    .catch(() => currentLastHeartbeat)) as bigint
+  return updatedBeat
+}
+
 export const fetchOnchainStatus = async (
   certId: `0x${string}`,
 ): Promise<{

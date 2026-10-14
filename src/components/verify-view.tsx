@@ -338,7 +338,7 @@ export function VerifyView({ initialCert }: VerifyViewProps) {
                   STALE — MONITOR OFFLINE
                 </div>
                 <div className='text-xs sm:text-sm mt-1 text-slate-700 leading-relaxed'>
-                  Attestor heartbeat is older than 120s. Unmonitored status
+                  Attestor heartbeat is older than 30m. Unmonitored status
                   cannot be treated as valid.
                 </div>
               </div>

@@ -1,6 +1,10 @@
 import { notFound } from 'next/navigation'
 import { connection } from 'next/server'
-import { fetchOnchainStatus, getPublicClient } from '@/lib/attestor'
+import {
+  fetchOnchainStatus,
+  getPublicClient,
+  ensureFreshHeartbeat,
+} from '@/lib/attestor'
 import { getCertificateRecord } from '@/lib/cert-store'
 import { VerifyView } from '@/components/verify-view'
 import { erc20Abi } from '@/lib/contracts/abis'
@@ -35,6 +39,11 @@ export default async function VerifyPage(props: PageProps<'/v/[cert-id]'>) {
     })
     .catch(() => 'USDC')) as string
 
+  const freshHeartbeat = await ensureFreshHeartbeat(onchain.lastHeartbeat)
+  const now = Math.floor(Date.now() / 1000)
+  const heartbeatAge = now - Number(freshHeartbeat)
+  const isHeartbeatFresh = freshHeartbeat > BigInt(0) && heartbeatAge <= 1800
+
   let displayStatus: VerifyDisplayStatus = 'VALID'
   if (onchain.effectiveStatus === 'Breached') {
     displayStatus = 'BREACHED'
@@ -42,6 +51,8 @@ export default async function VerifyPage(props: PageProps<'/v/[cert-id]'>) {
     displayStatus = 'REVOKED'
   } else if (onchain.effectiveStatus === 'Expired') {
     displayStatus = 'EXPIRED'
+  } else if (!isHeartbeatFresh && onchain.certRaw.mode === 0) {
+    displayStatus = 'STALE'
   } else if (onchain.certRaw.mode === 1) {
     displayStatus = 'LOCKED_GUARANTEED'
   }
@@ -61,8 +72,8 @@ export default async function VerifyPage(props: PageProps<'/v/[cert-id]'>) {
     displayStatus,
     statusAt: Number(onchain.certRaw.statusAt),
     evidenceBlock: Number(onchain.certRaw.evidenceBlock),
-    lastHeartbeat: Number(onchain.lastHeartbeat),
-    isHeartbeatFresh: onchain.lastHeartbeat > BigInt(0),
+    lastHeartbeat: Number(freshHeartbeat),
+    isHeartbeatFresh,
     anchorTxHash: localRecord?.txHash,
   }
 

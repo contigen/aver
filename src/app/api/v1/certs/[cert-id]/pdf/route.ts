@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server'
-import { fetchOnchainStatus, getPublicClient } from '@/lib/attestor'
+import {
+  fetchOnchainStatus,
+  getPublicClient,
+  ensureFreshHeartbeat,
+} from '@/lib/attestor'
 import { getCertificateRecord } from '@/lib/cert-store'
 import { generateCertificatePdf } from '@/lib/pdf-generator'
 import { resolveAppUrl } from '@/lib/app-url'
@@ -26,9 +30,9 @@ export async function GET(
 
     const localRecord = getCertificateRecord(certId)
     const now = Math.floor(Date.now() / 1000)
-    const heartbeatAge = now - Number(onchain.lastHeartbeat)
-    const isHeartbeatFresh =
-      onchain.lastHeartbeat > BigInt(0) && heartbeatAge <= 120
+    const freshHeartbeat = await ensureFreshHeartbeat(onchain.lastHeartbeat)
+    const heartbeatAge = now - Number(freshHeartbeat)
+    const isHeartbeatFresh = freshHeartbeat > BigInt(0) && heartbeatAge <= 1800
 
     const client = getPublicClient()
     const tokenSymbol = (await client
@@ -67,7 +71,7 @@ export async function GET(
       displayStatus,
       statusAt: Number(onchain.certRaw.statusAt),
       evidenceBlock: Number(onchain.certRaw.evidenceBlock),
-      lastHeartbeat: Number(onchain.lastHeartbeat),
+      lastHeartbeat: Number(freshHeartbeat),
       isHeartbeatFresh,
       anchorTxHash: localRecord?.txHash,
     }
