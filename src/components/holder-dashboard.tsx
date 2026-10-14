@@ -32,6 +32,7 @@ import {
   CheckCircle2,
   Plus,
   X,
+  Ban,
 } from 'lucide-react'
 import { sileo } from 'sileo'
 import {
@@ -41,7 +42,11 @@ import {
 } from '@/lib/chain-config'
 import { erc20Abi, lockVaultAbi } from '@/lib/contracts/abis'
 import { createMeraAccount, loginMeraAccount } from '@/lib/mera-auth'
-import { getEip712Domain, proofRequestTypes } from '@/lib/eip712'
+import {
+  getEip712Domain,
+  proofRequestTypes,
+  revokeRequestTypes,
+} from '@/lib/eip712'
 import type {
   IssueProofResponse,
   IssueProofRequestBody,
@@ -68,6 +73,7 @@ type CreatedCert = {
   threshold: string
   tokenSymbol: string
   evidenceBundle?: EvidenceBundle
+  isRevoked?: boolean
 }
 
 const client = createPublicClient({
@@ -142,6 +148,7 @@ export function HolderDashboard({ contractAddresses }: HolderDashboardProps) {
   const [includeSalt, setIncludeSalt] = useState<boolean>(false)
   const [isDownloadingEvidence, setIsDownloadingEvidence] =
     useState<boolean>(false)
+  const [isRevoking, setIsRevoking] = useState<boolean>(false)
 
   const refreshBalance = useCallback(
     async (targetAddress?: `0x${string}`, targetToken?: `0x${string}`) => {
@@ -650,6 +657,76 @@ export function HolderDashboard({ contractAddresses }: HolderDashboardProps) {
       })
     } finally {
       setIsDownloadingEvidence(false)
+    }
+  }
+
+  const handleRevokeCertificate = async () => {
+    if (!createdCert || !activeAddress) return
+    try {
+      setIsRevoking(true)
+      const now = Math.floor(Date.now() / 1000)
+      const deadline = now + 3600
+      const nonce = toHex(crypto.getRandomValues(new Uint8Array(32)))
+
+      const domain = getEip712Domain(10143, contractAddresses.averRegistry)
+      const wallet = getActiveWalletClient()
+
+      sileo.info({
+        title: 'Authorizing revocation',
+        description: 'Sign EIP-712 RevokeRequest in your wallet...',
+      })
+
+      const signature = await wallet.signTypedData({
+        domain,
+        types: revokeRequestTypes,
+        primaryType: 'RevokeRequest',
+        message: {
+          certId: createdCert.certId,
+          holder: activeAddress,
+          nonce,
+          deadline: BigInt(deadline),
+        },
+      })
+
+      sileo.info({
+        title: 'Revoking on Monad',
+        description: 'Submitting revocation to AverRegistry...',
+      })
+
+      const res = await fetch(`/api/v1/certs/${createdCert.certId}/revoke`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          holder: activeAddress,
+          nonce,
+          deadline,
+          signature,
+        }),
+      })
+
+      const data = (await res.json()) as { txHash?: string; error?: string }
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to revoke certificate')
+      }
+
+      sileo.success({
+        title: 'Certificate revoked',
+        description: `Certificate #${createdCert.certId.slice(0, 10)}... has been permanently revoked onchain.`,
+      })
+
+      setCreatedCert(prev =>
+        prev
+          ? {
+              ...prev,
+              isRevoked: true,
+            }
+          : null,
+      )
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      sileo.error({ title: 'Revocation failed', description: msg })
+    } finally {
+      setIsRevoking(false)
     }
   }
 
@@ -1499,10 +1576,17 @@ export function HolderDashboard({ contractAddresses }: HolderDashboardProps) {
             <div className='border border-slate-200/80 bg-white rounded-2xl p-6 sm:p-8 text-slate-900 shadow-xs'>
               <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100'>
                 <div>
-                  <div className='inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-mono uppercase tracking-wider font-semibold'>
-                    <span className='w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse' />
-                    Onchain Anchored
-                  </div>
+                  {createdCert.isRevoked ? (
+                    <div className='inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-50 border border-rose-200 text-rose-800 text-[10px] font-mono uppercase tracking-wider font-semibold'>
+                      <span className='w-1.5 h-1.5 rounded-full bg-rose-600' />
+                      Revoked Onchain
+                    </div>
+                  ) : (
+                    <div className='inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-mono uppercase tracking-wider font-semibold'>
+                      <span className='w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse' />
+                      Onchain Anchored
+                    </div>
+                  )}
                   <h3 className='text-xl sm:text-2xl font-bold tracking-tight text-slate-900 mt-1.5'>
                     Certificate #{createdCert.certId.slice(0, 10)}...
                   </h3>
@@ -1635,6 +1719,39 @@ export function HolderDashboard({ contractAddresses }: HolderDashboardProps) {
                         Include salt (discloses address ownership in bundle)
                       </span>
                     </label>
+                  </div>
+                </div>
+
+                <div className='p-4 sm:p-5 rounded-xl border border-rose-200 bg-rose-50/40 space-y-3 font-sans'>
+                  <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-3'>
+                    <div>
+                      <div className='font-semibold text-xs text-rose-900 flex items-center gap-1.5'>
+                        <Ban className='w-4 h-4 text-rose-600' />
+                        Revoke Certificate
+                      </div>
+                      <div className='text-[11px] text-rose-700/80 mt-0.5'>
+                        {createdCert.isRevoked
+                          ? 'This certificate has been permanently revoked on Monad testnet.'
+                          : 'Cryptographically invalidate this attestation onchain via an EIP-712 signature.'}
+                      </div>
+                    </div>
+
+                    {createdCert.isRevoked ? (
+                      <span className='inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-100 text-rose-800 text-xs font-semibold'>
+                        <Ban className='w-3.5 h-3.5 text-rose-600' />
+                        Revoked
+                      </span>
+                    ) : (
+                      <button
+                        type='button'
+                        onClick={handleRevokeCertificate}
+                        disabled={isRevoking}
+                        className='bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 self-start sm:self-auto disabled:opacity-50 shadow-xs cursor-pointer'
+                      >
+                        <Ban className='w-3.5 h-3.5' />
+                        {isRevoking ? 'Revoking...' : 'Revoke Certificate'}
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
